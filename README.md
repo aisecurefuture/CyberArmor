@@ -256,6 +256,5 @@ Proprietary - AIShields Inc. All rights reserved.
 
 ## Support
 
-- Enterprise Support: support@aishields.ai
-- Security Issues: security@aishields.ai
-- Documentation: https://docs.aishields.ai
+- Enterprise Support: support@gratitech.com
+- Security Issues: security@gratitech.com
