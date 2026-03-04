@@ -1,0 +1,44 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "rasp", "rasp", "{5DBA318D-00B2-FF5C-9603-F6C3D1BFA4B1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "extensions", "extensions", "{BE133D91-034E-1084-498B-FF24C4084A55}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{71B77391-219F-6E34-4F18-EA5613B577E2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIShieldsRasp", "rasp\dotnet\AIShieldsRasp.csproj", "{3A662091-4835-240C-62E6-152C2648222C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "visual-studio", "visual-studio", "{C31EE97F-8CBC-1D1D-CB83-058F4DD5CF8A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIShieldsExtension", "extensions\visual-studio\AIShieldsExtension.csproj", "{4E9DE9E5-F42F-8F46-C92C-2418F43C5805}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3A662091-4835-240C-62E6-152C2648222C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A662091-4835-240C-62E6-152C2648222C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A662091-4835-240C-62E6-152C2648222C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A662091-4835-240C-62E6-152C2648222C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E9DE9E5-F42F-8F46-C92C-2418F43C5805}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E9DE9E5-F42F-8F46-C92C-2418F43C5805}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E9DE9E5-F42F-8F46-C92C-2418F43C5805}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E9DE9E5-F42F-8F46-C92C-2418F43C5805}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{71B77391-219F-6E34-4F18-EA5613B577E2} = {5DBA318D-00B2-FF5C-9603-F6C3D1BFA4B1}
+		{3A662091-4835-240C-62E6-152C2648222C} = {71B77391-219F-6E34-4F18-EA5613B577E2}
+		{C31EE97F-8CBC-1D1D-CB83-058F4DD5CF8A} = {BE133D91-034E-1084-498B-FF24C4084A55}
+		{4E9DE9E5-F42F-8F46-C92C-2418F43C5805} = {C31EE97F-8CBC-1D1D-CB83-058F4DD5CF8A}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6821D10A-BE61-4139-BBA8-14C60D35BCBE}
+	EndGlobalSection
+EndGlobal

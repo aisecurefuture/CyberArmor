@@ -1,0 +1,26 @@
+{
+  "name": "aishields-cursor",
+  "displayName": "AIShields Protect for Cursor",
+  "description": "Enterprise AI security — monitors AI code generation, DLP scanning, policy enforcement",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "aishields-cursor.scanFile", "title": "AIShields: Scan Current File" },
+      { "command": "aishields-cursor.toggleMonitoring", "title": "AIShields: Toggle Monitoring" }
+    ],
+    "configuration": {
+      "title": "AIShields Protect",
+      "properties": {
+        "aishields.controlPlaneUrl": { "type": "string", "default": "http://localhost:8000" },
+        "aishields.apiKey": { "type": "string", "default": "" },
+        "aishields.tenantId": { "type": "string", "default": "default" }
+      }
+    }
+  },
+  "scripts": { "compile": "tsc -p ./", "watch": "tsc -watch -p ./" },
+  "devDependencies": { "@types/vscode": "^1.85.0", "typescript": "^5.3.0" }
+}

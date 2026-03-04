@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:type="TaskPaneApp">
+  <Id>a1b2c3d4-e5f6-7890-abcd-aishields0001</Id>
+  <Version>1.0.0</Version>
+  <ProviderName>AIShields</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="AIShields Protect"/>
+  <Description DefaultValue="Enterprise AI security for Microsoft Office — DLP scanning, content monitoring, compliance enforcement"/>
+  <SupportUrl DefaultValue="https://aishields.ai/support"/>
+
+  <Hosts>
+    <Host Name="Document"/>
+    <Host Name="Workbook"/>
+    <Host Name="Presentation"/>
+    <Host Name="Notebook"/>
+    <Host Name="Mailbox"/>
+  </Hosts>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://localhost:3000/taskpane.html"/>
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Document">
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="AIShieldsGroup">
+                <Label resid="GroupLabel"/>
+                <Control xsi:type="Button" id="ScanBtn">
+                  <Label resid="ScanLabel"/>
+                  <Supertip><Title resid="ScanLabel"/><Description resid="ScanDesc"/></Supertip>
+                  <Action xsi:type="ExecuteFunction"><FunctionName>scanDocument</FunctionName></Action>
+                </Control>
+                <Control xsi:type="Button" id="ComplianceBtn">
+                  <Label resid="ComplianceLabel"/>
+                  <Action xsi:type="ShowTaskpane"><SourceLocation resid="TaskpaneUrl"/></Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <Resources>
+      <bt:Urls>
+        <bt:Url id="TaskpaneUrl" DefaultValue="https://localhost:3000/taskpane.html"/>
+        <bt:Url id="CommandsUrl" DefaultValue="https://localhost:3000/commands.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GroupLabel" DefaultValue="AIShields"/>
+        <bt:String id="ScanLabel" DefaultValue="Scan Document"/>
+        <bt:String id="ComplianceLabel" DefaultValue="Compliance"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="ScanDesc" DefaultValue="Scan document for sensitive data, PII, and compliance issues"/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

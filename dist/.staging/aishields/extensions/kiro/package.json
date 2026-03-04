@@ -1,0 +1,24 @@
+{
+  "name": "aishields-kiro",
+  "displayName": "AIShields Protect for Kiro",
+  "description": "Enterprise AI security for Kiro IDE — DLP scanning, AI code monitoring, policy enforcement",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "aishields-kiro.scanFile", "title": "AIShields: Scan Current File" }
+    ],
+    "configuration": {
+      "title": "AIShields Protect",
+      "properties": {
+        "aishields.controlPlaneUrl": { "type": "string", "default": "http://localhost:8000" },
+        "aishields.apiKey": { "type": "string", "default": "" }
+      }
+    }
+  },
+  "scripts": { "compile": "tsc -p ./", "watch": "tsc -watch -p ./" },
+  "devDependencies": { "@types/vscode": "^1.85.0", "typescript": "^5.3.0" }
+}

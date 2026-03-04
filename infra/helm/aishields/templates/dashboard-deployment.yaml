@@ -1,0 +1,71 @@
+{{- $svc := .Values.adminDashboard -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aishields.fullname" . }}-dashboard
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "aishields.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      {{- include "aishields.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: dashboard
+  template:
+    metadata:
+      labels:
+        {{- include "aishields.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: dashboard
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "aishields.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 101
+      containers:
+        - name: dashboard
+          image: "{{ .Values.global.imageRegistry }}/{{ $svc.image.repository }}:{{ $svc.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $svc.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.healthCheck.path }}
+              port: 80
+            initialDelaySeconds: {{ $svc.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ $svc.healthCheck.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.healthCheck.path }}
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources: {{- toYaml $svc.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aishields.fullname" . }}-dashboard
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "aishields.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+spec:
+  type: {{ $svc.service.type }}
+  ports:
+    - port: {{ $svc.service.port }}
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "aishields.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard

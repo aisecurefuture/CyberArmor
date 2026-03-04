@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PackageId>AIShields.RASP</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>AIShields</Authors>
+    <Description>Runtime Application Self-Protection for AI/LLM API calls in ASP.NET Core</Description>
+    <PackageTags>security;ai;llm;rasp;middleware</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+</Project>

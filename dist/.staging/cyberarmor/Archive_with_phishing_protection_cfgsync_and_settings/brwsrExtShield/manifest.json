@@ -1,0 +1,30 @@
+{
+    "manifest_version": 3,
+    "name": "AiShields Browser Protection",
+    "version": "1.0",
+    "description": "Warns if PII or CUI or Privacy Protected Data is detected in input fields and Query Strings",
+    "permissions": ["scripting","activeTab","tabs","storage","declarativeNetRequest","declarativeNetRequestFeedback"],
+    "host_permissions": ["http://*/*", "https://*/*"],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
+    },
+    "content_scripts": [{
+        "matches": ["http://*/*","https://*/*"],
+        "js": ["content.js"],
+        "run_at": "document_idle"
+    }],
+    "action": {
+        "default_title": "AiShields Browser Protection",
+        "default_popup": "popup.html"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": ["redactor.js", "networkInterceptor.js"],
+            "matches": ["http://*/*","https://*/*"]
+        }
+    ]
+}

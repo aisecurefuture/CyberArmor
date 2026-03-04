@@ -1,0 +1,23 @@
+[package]
+name = "aishields-rasp"
+version = "1.0.0"
+edition = "2021"
+description = "CyberArmor.ai RASP - Runtime Application Self-Protection for AI/LLM APIs"
+license = "MIT"
+
+[dependencies]
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+tower = { version = "0.4", optional = true }
+axum = { version = "0.7", optional = true }
+http = "1"
+http-body = "1"
+bytes = "1"
+tracing = "0.1"
+
+[features]
+default = ["tower-middleware"]
+tower-middleware = ["tower", "axum"]

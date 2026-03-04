@@ -1,0 +1,79 @@
+{
+  "manifest_version": 3,
+  "name": "AIShields Protect",
+  "version": "2.0.0",
+  "description": "Enterprise AI security: PII protection, phishing defense, AI service monitoring, prompt injection detection, and policy enforcement.",
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "tabs",
+    "storage",
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback",
+    "alarms",
+    "webNavigation",
+    "clipboardRead",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["policy_engine.js", "content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://copilot.microsoft.com/*",
+        "https://www.perplexity.ai/*",
+        "https://bard.google.com/*",
+        "https://huggingface.co/chat/*",
+        "https://poe.com/*",
+        "https://you.com/*",
+        "https://chat.mistral.ai/*",
+        "https://labs.google.com/*"
+      ],
+      "js": ["policy_engine.js", "ai_monitor.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "AIShields Protect",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "phishing_warning.html",
+        "phishing_warning.js"
+      ],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AIShields Protect</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<link rel="stylesheet" href="taskpane.css">
+</head><body>
+<div id="app">
+  <header><h1>AIShields Protect</h1><p class="subtitle">AI Security for Office</p></header>
+  <div id="status" class="status-card"><div class="dot green"></div><span>Active</span></div>
+  <div class="section">
+    <h2>Quick Actions</h2>
+    <button id="scanBtn" class="btn primary">Scan Document</button>
+    <button id="complianceBtn" class="btn">Check Compliance</button>
+    <button id="classifyBtn" class="btn">Classify Content</button>
+  </div>
+  <div class="section">
+    <h2>Findings</h2>
+    <div id="findings" class="findings-list"><p class="empty">No findings yet. Click "Scan Document" to start.</p></div>
+  </div>
+  <div class="section">
+    <h2>DLP Status</h2>
+    <div id="dlpPatterns" class="pattern-list"></div>
+  </div>
+</div>
+<script src="taskpane.js"></script>
+</body></html>

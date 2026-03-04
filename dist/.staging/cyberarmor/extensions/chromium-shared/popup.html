@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIShields Protect</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="logo">S</div>
+      <div>
+        <div class="title">AIShields Protect</div>
+        <div class="version" id="version-text">v2.0.0</div>
+      </div>
+      <div style="margin-left: auto;">
+        <div class="connection-indicator" id="connection-status">
+          <span class="dot"></span>
+          <span class="label">Checking...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="popup-body">
+      <!-- Protection Status -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <span class="card-title">Protection Status</span>
+          <span class="status-badge status-badge--active" id="protection-badge">
+            <span class="status-dot status-dot--active status-dot--pulse"></span>
+            Active
+          </span>
+        </div>
+
+        <!-- Quick Toggles -->
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">PII Protection</div>
+            <div class="toggle-desc">Detect &amp; redact sensitive data</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-pii" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Phishing Defense</div>
+            <div class="toggle-desc">Block suspicious URLs</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-phishing" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">AI Monitoring</div>
+            <div class="toggle-desc">Monitor AI service interactions</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-ai" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Prompt Injection</div>
+            <div class="toggle-desc">Detect injection attacks</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-injection" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Enforcement Mode -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <span class="card-title">Enforcement Mode</span>
+        </div>
+        <div class="mode-selector" id="mode-selector">
+          <button class="mode-option" data-mode="monitor">Monitor</button>
+          <button class="mode-option active" data-mode="warn">Warn</button>
+          <button class="mode-option" data-mode="block">Block</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid fade-in">
+        <div class="stat-item">
+          <div class="stat-value" id="stat-threats">0</div>
+          <div class="stat-label">Threats</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-pii">0</div>
+          <div class="stat-label">PII Found</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-ai">0</div>
+          <div class="stat-label">AI Scans</div>
+        </div>
+      </div>
+
+      <!-- Recent Alerts -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <span class="card-title">Recent Alerts</span>
+          <button class="btn btn-ghost btn-sm" id="btn-clear-alerts">Clear</button>
+        </div>
+        <ul class="alert-list" id="alert-list">
+          <li class="empty-state">
+            <div class="empty-state-icon">&#x2714;</div>
+            <div>No recent alerts</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Policy Status -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <span class="card-title">Policies</span>
+          <button class="btn btn-outline btn-sm" id="btn-sync-policies">Sync Now</button>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-secondary" id="policy-count">0 policies loaded</span>
+          <span class="text-muted" id="policy-sync-time">Never synced</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="popup-footer">
+      <button class="btn btn-ghost btn-sm" id="btn-options">Settings</button>
+      <button class="btn btn-outline btn-sm" id="btn-dashboard">Dashboard</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

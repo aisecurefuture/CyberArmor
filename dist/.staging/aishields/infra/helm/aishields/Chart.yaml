@@ -1,0 +1,20 @@
+apiVersion: v2
+name: aishields
+description: AIShields OSS Helm chart
+  AIShields Protect - Enterprise AI Security Platform providing real-time
+  threat detection, policy enforcement, compliance monitoring, and incident
+  response for AI/ML workloads
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - ai-security
+  - llm-firewall
+  - policy-engine
+  - threat-detection
+  - compliance
+  - post-quantum-cryptography
+home: https://aishields.io
+maintainers:
+  - name: AIShields Engineering
+    email: engineering@aishields.io

@@ -1,0 +1,197 @@
+{
+  "name": "aishields-protect",
+  "displayName": "AIShields Protect",
+  "description": "Enterprise AI security platform - monitors AI code assistants, enforces DLP policies, and provides real-time protection against AI-related security risks in your development environment.",
+  "version": "1.0.0",
+  "publisher": "aishields",
+  "license": "SEE LICENSE IN LICENSE",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aishields/protect-vscode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Linters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ai",
+    "security",
+    "dlp",
+    "copilot",
+    "monitoring",
+    "policy",
+    "compliance",
+    "secrets"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aishields.scanWorkspace",
+        "title": "AIShields: Scan Workspace for Sensitive Data"
+      },
+      {
+        "command": "aishields.scanCurrentFile",
+        "title": "AIShields: Scan Current File"
+      },
+      {
+        "command": "aishields.showDashboard",
+        "title": "AIShields: Show Security Dashboard"
+      },
+      {
+        "command": "aishields.syncPolicies",
+        "title": "AIShields: Sync Policies from Control Plane"
+      },
+      {
+        "command": "aishields.toggleMonitoring",
+        "title": "AIShields: Toggle AI Monitoring"
+      },
+      {
+        "command": "aishields.viewAuditLog",
+        "title": "AIShields: View Audit Log"
+      },
+      {
+        "command": "aishields.configureEndpoint",
+        "title": "AIShields: Configure Control Plane Endpoint"
+      }
+    ],
+    "configuration": {
+      "title": "AIShields Protect",
+      "properties": {
+        "aishields.controlPlaneUrl": {
+          "type": "string",
+          "default": "https://api.aishields.io",
+          "description": "URL of the AIShields control plane API"
+        },
+        "aishields.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for authenticating with the control plane"
+        },
+        "aishields.enableAIMonitoring": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable monitoring of AI code assistant activity"
+        },
+        "aishields.enableDLPScanning": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Data Loss Prevention scanning of files"
+        },
+        "aishields.enableTelemetry": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send anonymized usage telemetry to AIShields"
+        },
+        "aishields.enforcementMode": {
+          "type": "string",
+          "enum": [
+            "monitor",
+            "warn",
+            "block"
+          ],
+          "default": "warn",
+          "description": "Policy enforcement mode: monitor (log only), warn (show warnings), block (prevent actions)"
+        },
+        "aishields.policySyncIntervalSeconds": {
+          "type": "number",
+          "default": 300,
+          "description": "Interval in seconds between policy sync operations"
+        },
+        "aishields.scanOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan files for sensitive data on save"
+        },
+        "aishields.scanOnPaste": {
+          "type": "boolean",
+          "default": true,
+          "description": "Scan clipboard content for sensitive data on paste"
+        },
+        "aishields.gitPreCommitHook": {
+          "type": "boolean",
+          "default": true,
+          "description": "Install pre-commit hook to prevent committing secrets"
+        },
+        "aishields.customPatterns": {
+          "type": "array",
+          "default": [],
+          "description": "Custom regex patterns for sensitive data detection"
+        },
+        "aishields.excludePaths": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/*.min.js"
+          ],
+          "description": "Glob patterns for paths to exclude from scanning"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aishields",
+          "title": "AIShields Protect",
+          "icon": "media/shield.svg"
+        }
+      ]
+    },
+    "views": {
+      "aishields": [
+        {
+          "id": "aishields.dashboard",
+          "name": "Security Dashboard"
+        },
+        {
+          "id": "aishields.findings",
+          "name": "Findings"
+        },
+        {
+          "id": "aishields.aiActivity",
+          "name": "AI Activity"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "aishields.scanCurrentFile",
+          "group": "aishields"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3",
+    "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}

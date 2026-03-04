@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIShields Protect - Settings</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="options-page">
+    <!-- Header -->
+    <div class="options-header">
+      <h1>AIShields Protect Settings</h1>
+      <p class="subtitle">Configure your enterprise AI security policies and monitoring preferences.</p>
+    </div>
+
+    <div class="options-content">
+      <!-- Navigation Tabs -->
+      <nav class="options-nav">
+        <button class="options-nav-item active" data-tab="connection">Connection</button>
+        <button class="options-nav-item" data-tab="protection">Protection</button>
+        <button class="options-nav-item" data-tab="ai-monitoring">AI Monitoring</button>
+        <button class="options-nav-item" data-tab="dlp">DLP</button>
+        <button class="options-nav-item" data-tab="advanced">Advanced</button>
+      </nav>
+
+      <!-- Connection Tab -->
+      <div class="options-section active" id="tab-connection">
+        <div class="options-card">
+          <div class="options-card-title">Control Plane Connection</div>
+
+          <div class="form-group">
+            <label class="form-label" for="control-plane-url">Control Plane URL</label>
+            <input type="url" class="form-input" id="control-plane-url" placeholder="https://api.aishields.io">
+            <p class="form-hint">The URL of your AIShields control plane instance.</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="api-key">API Key</label>
+            <input type="password" class="form-input form-input--mono" id="api-key" placeholder="Enter your API key">
+            <p class="form-hint">API key for authenticating with the control plane. Stored securely in browser sync storage.</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tenant-id">Tenant ID</label>
+            <input type="text" class="form-input" id="tenant-id" placeholder="demo">
+            <p class="form-hint">Your organization's tenant identifier.</p>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-primary" id="btn-test-connection">Test Connection</button>
+            <span class="text-muted" id="connection-test-result" style="line-height: 36px;"></span>
+          </div>
+        </div>
+
+        <div class="options-card">
+          <div class="options-card-title">Policy Sync</div>
+
+          <div class="form-group">
+            <label class="form-label" for="policy-sync-interval">Sync Interval (seconds)</label>
+            <input type="number" class="form-input" id="policy-sync-interval" min="10" max="3600" value="60">
+            <p class="form-hint">How often to pull policy updates from the control plane.</p>
+          </div>
+
+          <div class="flex items-center justify-between" style="margin-top: 8px;">
+            <span class="text-secondary" id="last-sync-info">Last sync: Never</span>
+            <button class="btn btn-outline btn-sm" id="btn-force-sync">Force Sync</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Protection Tab -->
+      <div class="options-section" id="tab-protection">
+        <div class="options-card">
+          <div class="options-card-title">Enforcement Mode</div>
+          <div class="section-description">Controls how the extension responds to detected threats.</div>
+
+          <div class="form-group">
+            <label class="form-label" for="action-mode">Mode</label>
+            <select class="form-select" id="action-mode">
+              <option value="monitor">Monitor - Log threats, no user interruption</option>
+              <option value="warn">Warn - Show warnings for detected threats</option>
+              <option value="block">Block - Prevent dangerous actions</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="options-card">
+          <div class="options-card-title">Phishing Protection</div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Enable Phishing Protection</div>
+              <div class="toggle-desc">Block or warn on suspicious URLs and domains.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-phishing-enabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="form-group" style="margin-top: 12px;">
+            <label class="form-label" for="phishing-mode">Phishing Mode</label>
+            <select class="form-select" id="phishing-mode">
+              <option value="redirect">Redirect - Show warning page</option>
+              <option value="block">Block - Prevent navigation entirely</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="phishing-allowlist">Allowlisted Domains</label>
+            <textarea class="form-input" id="phishing-allowlist" rows="3" placeholder="example.com&#10;internal.company.com"></textarea>
+            <p class="form-hint">One domain per line. These domains will bypass phishing detection.</p>
+          </div>
+        </div>
+
+        <div class="options-card">
+          <div class="options-card-title">XSS / Injection Detection</div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Cross-Site Scripting Detection</div>
+              <div class="toggle-desc">Scan form inputs for XSS payloads.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-xss-enabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Command Injection Detection</div>
+              <div class="toggle-desc">Detect shell command injection in inputs.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-cmd-injection-enabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Monitoring Tab -->
+      <div class="options-section" id="tab-ai-monitoring">
+        <div class="options-card">
+          <div class="options-card-title">AI Service Monitoring</div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Enable AI Monitoring</div>
+              <div class="toggle-desc">Monitor interactions with AI services (ChatGPT, Claude, Gemini, etc.).</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-ai-monitoring" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Prompt Injection Detection</div>
+              <div class="toggle-desc">Detect and warn on prompt injection attempts in AI chats.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-prompt-injection" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">AI File Upload Monitoring</div>
+              <div class="toggle-desc">Scan files before upload to AI services.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-ai-file-upload" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Log AI Prompts</div>
+              <div class="toggle-desc">Send redacted prompt telemetry to control plane for audit.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-log-prompts">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="options-card">
+          <div class="options-card-title">Monitored AI Services</div>
+          <div class="section-description">Select which AI services to monitor. All services are monitored by default.</div>
+
+          <div id="ai-service-list" style="max-height: 250px; overflow-y: auto;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- DLP Tab -->
+      <div class="options-section" id="tab-dlp">
+        <div class="options-card">
+          <div class="options-card-title">Data Loss Prevention</div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Enable PII Detection</div>
+              <div class="toggle-desc">Detect personally identifiable information in form inputs and AI prompts.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-pii-enabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Auto-Redact PII</div>
+              <div class="toggle-desc">Automatically redact PII in telemetry data sent to the control plane.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-auto-redact" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="options-card">
+          <div class="options-card-title">DLP Sensitivity Level</div>
+
+          <div class="form-group">
+            <label class="form-label" for="dlp-sensitivity">Sensitivity</label>
+            <select class="form-select" id="dlp-sensitivity">
+              <option value="low">Low - Only detect critical PII (SSN, credit cards, keys)</option>
+              <option value="medium" selected>Medium - Detect most PII types</option>
+              <option value="high">High - Detect all PII including partial matches</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="options-card">
+          <div class="options-card-title">Custom PII Patterns</div>
+          <div class="section-description">Add custom regex patterns for organization-specific data types.</div>
+
+          <div class="form-group">
+            <label class="form-label" for="custom-patterns">Patterns (one per line, format: label|regex)</label>
+            <textarea class="form-input form-input--mono" id="custom-patterns" rows="4" placeholder="employee_id|EMP-\d{6}&#10;internal_code|IC-[A-Z]{3}-\d{4}"></textarea>
+            <p class="form-hint">Example: employee_id|EMP-\d{6}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced Tab -->
+      <div class="options-section" id="tab-advanced">
+        <div class="options-card">
+          <div class="options-card-title">Telemetry</div>
+
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Enable Telemetry</div>
+              <div class="toggle-desc">Send security events to the control plane for centralized monitoring.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="opt-telemetry" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="options-card">
+          <div class="options-card-title">Data Management</div>
+
+          <div class="btn-group" style="margin-bottom: 12px;">
+            <button class="btn btn-outline" id="btn-export-config">Export Settings</button>
+            <button class="btn btn-outline" id="btn-import-config">Import Settings</button>
+          </div>
+          <input type="file" id="import-file-input" accept=".json" style="display: none;">
+
+          <div class="divider"></div>
+
+          <button class="btn btn-danger" id="btn-reset-config">Reset All Settings to Defaults</button>
+          <p class="form-hint" style="margin-top: 6px;">This will clear all custom settings and restore default values.</p>
+        </div>
+
+        <div class="options-card">
+          <div class="options-card-title">Debug Information</div>
+
+          <div style="font-family: var(--font-mono); font-size: 12px; background: var(--color-bg-secondary); padding: 12px; border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto;">
+            <div>Extension Version: <strong id="debug-version">2.0.0</strong></div>
+            <div>Manifest Version: <strong>3</strong></div>
+            <div>Policies Cached: <strong id="debug-policy-count">0</strong></div>
+            <div>Last Policy Sync: <strong id="debug-last-sync">Never</strong></div>
+            <div>Storage Used: <strong id="debug-storage">Calculating...</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Save Bar -->
+      <div style="position: sticky; bottom: 0; background: var(--color-bg-secondary); padding: 12px 0; border-top: 1px solid var(--color-border); margin-top: 24px;">
+        <div class="flex items-center justify-between">
+          <span class="text-muted" id="save-status">All changes auto-saved</span>
+          <button class="btn btn-primary" id="btn-save">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

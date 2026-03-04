@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CyberArmor Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="color-scheme" content="dark light" />
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <div class="min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-72 border-r border-slate-800 bg-slate-950/80 backdrop-blur p-4 hidden md:block">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center font-bold">CA</div>
+        <div>
+          <div class="font-semibold leading-tight">CyberArmor</div>
+          <div class="text-xs text-slate-400">Admin Dashboard</div>
+        </div>
+      </div>
+
+      <nav class="space-y-1" id="nav"></nav>
+
+      <div class="mt-8 p-3 rounded-2xl bg-slate-900 border border-slate-800">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-semibold">Connection</div>
+          <button id="openSettings" class="text-xs text-slate-300 hover:text-white underline">Settings</button>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 space-y-1">
+          <div><span class="text-slate-300">Control Plane:</span> <span id="cpLabel">—</span></div>
+          <div><span class="text-slate-300">Policy:</span> <span id="polLabel">—</span></div>
+          <div><span class="text-slate-300">Proxy Agent:</span> <span id="pxLabel">—</span></div>
+          <div><span class="text-slate-300">Detection:</span> <span id="detLabel">—</span></div>
+          <div><span class="text-slate-300">Response:</span> <span id="rspLabel">—</span></div>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button id="pingAll" class="flex-1 text-xs py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Ping health</button>
+        </div>
+        <div class="mt-2 text-xs" id="healthStatus"></div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1">
+      <header class="sticky top-0 z-10 bg-slate-950/80 backdrop-blur border-b border-slate-800">
+        <div class="px-4 md:px-8 py-4 flex items-center justify-between">
+          <div>
+            <h1 id="pageTitle" class="text-lg md:text-xl font-semibold">Dashboard</h1>
+            <p id="pageSubtitle" class="text-xs md:text-sm text-slate-400">Security posture, policies, and operations.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="hidden md:block text-xs text-slate-400">Tenant scope</div>
+            <input id="tenantScope" class="w-44 md:w-56 text-sm px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-600" placeholder="(optional) tenant_id" />
+            <button id="applyScope" class="text-sm px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Apply</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="px-4 md:px-8 py-6" id="app"></div>
+    </main>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4">
+    <div class="w-full max-w-2xl rounded-2xl bg-slate-950 border border-slate-800 shadow-xl">
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <div class="font-semibold">Settings</div>
+          <div class="text-xs text-slate-400">Base URLs + API keys are stored in localStorage (browser-only).</div>
+        </div>
+        <button id="closeSettings" class="text-slate-300 hover:text-white">✕</button>
+      </div>
+      <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <label class="text-xs text-slate-300">Control Plane URL</label>
+          <input id="cpUrl" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800" placeholder="http://localhost:8000" />
+        </div>
+        <div class="space-y-2">
+          <label class="text-xs text-slate-300">Control Plane API Key (x-api-key)</label>
+          <input id="cpKey" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800" placeholder="change-me" />
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs text-slate-300">Policy Service URL</label>
+          <input id="polUrl" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800" placeholder="http://localhost:8001" />
+        </div>
+        <div class="space-y-2">
+          <label class="text-xs text-slate-300">Policy API Key (x-api-key)</label>
+          <input id="polKey" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800" placeholder="change-me-policy" />
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs text-slate-300">Proxy Agent URL</label>
+          <input id="pxUrl" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800" placeholder="http://localhost:8010" />
+        </div>
+        <div class="space-y-2">
+          <label class="text-xs text-slate-300">Proxy API Key (x-api-key)</label>
+          <input id="pxKey" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800" placeholder="change-me-proxy" />
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs text-slate-300">Detection Service URL</label>
+          <input id="detUrl" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800" placeholder="http://localhost:8002" />
+        </div>
+        <div class="space-y-2">
+          <label class="text-xs text-slate-300">Response Service URL</label>
+          <input id="rspUrl" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800" placeholder="http://localhost:8003" />
+        </div>
+      </div>
+      <div class="p-5 border-t border-slate-800 flex items-center justify-end gap-2">
+        <button id="resetSettings" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Reset</button>
+        <button id="saveSettings" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

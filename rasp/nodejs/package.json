@@ -1,0 +1,10 @@
+{
+  "name": "aishields-rasp",
+  "version": "1.0.0",
+  "description": "AIShields RASP - Runtime Application Self-Protection for AI/LLM APIs",
+  "main": "aishields-rasp.js",
+  "keywords": ["security", "ai", "llm", "rasp", "middleware"],
+  "author": "AIShields",
+  "license": "MIT",
+  "engines": { "node": ">=18.0.0" }
+}

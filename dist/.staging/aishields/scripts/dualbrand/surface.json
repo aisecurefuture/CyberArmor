@@ -1,0 +1,176 @@
+{
+  "targets": [
+    {
+      "name": "Envoy headers",
+      "globs": [
+        "infra/envoy/**/*.lua",
+        "infra/envoy/**/*.yaml",
+        "infra/envoy/**/*.yml",
+        "infra/envoy/*.lua",
+        "infra/envoy/*.yaml",
+        "infra/envoy/*.yml"
+      ],
+      "replacements": [
+        {
+          "kind": "literal",
+          "from": "{{other_header}}",
+          "to": "{{brand_header}}"
+        }
+      ]
+    },
+    {
+      "name": "Service and agent titles / brand strings",
+      "globs": [
+        "README.md",
+        "agents/**/main.py",
+        "docs/**/*.md",
+        "services/**/README.md",
+        "services/**/main.py"
+      ],
+      "replacements": [
+        {
+          "kind": "literal",
+          "from": "{{other_name_dotai}}",
+          "to": "{{brand_name_dotai}}"
+        },
+        {
+          "kind": "regex",
+          "from": "\\b{{other_name}}\\b",
+          "to": "{{brand_name}}"
+        }
+      ]
+    },
+    {
+      "name": "Linux /etc paths",
+      "globs": [
+        "services/proxy/**/*.py",
+        "agents/proxy-agent/**/*.py",
+        "infra/docker-compose/docker-compose.yml",
+        "infra/docker-compose/docker-compose.yaml"
+      ],
+      "replacements": [
+        {
+          "kind": "literal",
+          "from": "{{other_etc}}/",
+          "to": "{{brand_etc}}/"
+        },
+        {
+          "kind": "literal",
+          "from": "{{other_etc}}",
+          "to": "{{brand_etc}}"
+        }
+      ]
+    },
+    {
+      "name": "Env var prefix normalization",
+      "globs": [
+        "services/proxy/**/*.py",
+        "services/control-plane/**/*.py",
+        "services/detection/**/*.py",
+        "services/policy/**/*.py",
+        "services/response/**/*.py",
+        "agents/proxy-agent/**/*.py",
+        "infra/docker-compose/docker-compose.yml",
+        "infra/docker-compose/docker-compose.yaml"
+      ],
+      "replacements": [
+        {
+          "kind": "literal",
+          "from": "{{other_prefix}}",
+          "to": "{{brand_prefix}}"
+        }
+      ]
+    },
+    {
+      "name": "Header prefix in python services",
+      "globs": [
+        "services/**/*.py",
+        "agents/**/*.py"
+      ],
+      "replacements": [
+        {
+          "kind": "literal",
+          "from": "{{other_header}}",
+          "to": "{{brand_header}}"
+        }
+      ]
+    },
+    {
+      "name": "Docker compose env files",
+      "globs": [
+        "infra/docker-compose/.env",
+        "infra/docker-compose/.env.example"
+      ],
+      "replacements": [
+        {
+          "kind": "literal",
+          "from": "{{other_prefix}}",
+          "to": "{{brand_prefix}}"
+        },
+        {
+          "kind": "literal",
+          "from": "{{other_etc}}",
+          "to": "{{brand_etc}}"
+        },
+        {
+          "kind": "literal",
+          "from": "{{other_header}}",
+          "to": "{{brand_header}}"
+        },
+        {
+          "kind": "regex",
+          "from": "\\b{{other_name}}\\b",
+          "to": "{{brand_name}}"
+        },
+        {
+          "kind": "literal",
+          "from": "{{other_name_dotai}}",
+          "to": "{{brand_name_dotai}}"
+        }
+      ]
+    },
+    {
+      "name": "RASP SDKs and kernel/agent branding",
+      "globs": [
+        "agents/endpoint-agent/*",
+        "agents/endpoint-agent/**/*",
+        "kernel/*",
+        "kernel/**/*",
+        "mobile/*",
+        "mobile/**/*",
+        "rasp/*",
+        "rasp/**/*",
+        "scripts/smoke-test.sh",
+        "services/siem-connector/*",
+        "services/siem-connector/**/*"
+      ],
+      "replacements": [
+        {
+          "kind": "literal",
+          "from": "{{other_prefix}}",
+          "to": "{{brand_prefix}}"
+        },
+        {
+          "kind": "literal",
+          "from": "{{other_header}}",
+          "to": "{{brand_header}}"
+        },
+        {
+          "kind": "literal",
+          "from": "{{other_name_dotai}}",
+          "to": "{{brand_name_dotai}}"
+        },
+        {
+          "kind": "regex",
+          "from": "\\b{{other_name}}\\b",
+          "to": "{{brand_name}}"
+        },
+        {
+          "kind": "literal",
+          "from": "{{other_etc}}",
+          "to": "{{brand_etc}}"
+        }
+      ]
+    }
+  ]
+}

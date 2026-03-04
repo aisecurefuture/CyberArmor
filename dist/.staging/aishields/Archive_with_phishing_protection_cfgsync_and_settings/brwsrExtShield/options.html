@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AiShields Settings</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 16px; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    input { width: 100%; padding: 8px; box-sizing: border-box; }
+    button { margin-top: 16px; padding: 8px 12px; }
+    .status { margin-top: 8px; color: green; }
+  </style>
+</head>
+<body>
+  <h3>AiShields Browser Protection</h3>
+  <label for="endpoint">Telemetry Endpoint</label>
+  <input id="endpoint" type="text" placeholder="http://localhost:8000/telemetry/ingest">
+  <label for="apiKey">API Key</label>
+  <input id="apiKey" type="password" placeholder="control-plane API key">
+  <label for="tenantId">Tenant ID</label>
+  <input id="tenantId" type="text" placeholder="demo">
+
+  <hr style="margin:20px 0;" />
+
+  <h4>General</h4>
+  <label style="font-weight:normal; display:flex; gap:8px; align-items:center;">
+    <input id="telemetryEnabled" type="checkbox" style="width:auto;">
+    Enable telemetry (send security events to the configured endpoint)
+  </label>
+
+  <label style="font-weight:normal; display:flex; gap:8px; align-items:center;">
+    <input id="redactPIIEnabled" type="checkbox" style="width:auto;">
+    Enable PII detection & warnings (alerts on possible sensitive input)
+  </label>
+
+  <hr style="margin:20px 0;" />
+
+  <h4>Phishing Protection</h4>
+  <label style="font-weight:normal; display:flex; gap:8px; align-items:center;">
+    <input id="phishingProtectionEnabled" type="checkbox" style="width:auto;">
+    Enable phishing link protection (block/redirect high-confidence phishing patterns)
+  </label>
+
+  <label for="phishingMode">Mode</label>
+  <select id="phishingMode" style="width:100%; padding:8px; box-sizing:border-box;">
+    <option value="redirect">Redirect to warning page (recommended)</option>
+    <option value="block">Block outright</option>
+  </select>
+
+  <label for="phishingAllowlistDomains">Allowed domains (one per line)</label>
+  <textarea id="phishingAllowlistDomains" rows="6" style="width:100%; padding:8px; box-sizing:border-box;" placeholder="example.com\nlogin.mycompany.com"></textarea>
+  <button id="save">Save</button>
+  <div class="status" id="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

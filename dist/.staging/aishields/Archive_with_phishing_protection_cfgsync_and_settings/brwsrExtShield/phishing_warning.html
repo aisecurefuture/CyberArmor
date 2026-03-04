@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Potential phishing link blocked</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #0b1220; color: #eef2ff; }
+    .card { background: #111a2e; padding: 20px; border-radius: 12px; border: 1px solid #26314f; max-width: 960px; }
+    h1 { margin: 0 0 8px 0; font-size: 20px; }
+    p { margin: 8px 0; line-height: 1.4; }
+    code { word-break: break-all; }
+    .row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    button { padding: 10px 12px; border-radius: 10px; border: 1px solid #334155; background: #0b1220; color: #eef2ff; cursor: pointer; }
+    button.primary { background: #2563eb; border-color: #1d4ed8; }
+    .muted { color: #cbd5e1; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>We blocked a potentially suspicious link</h1>
+    <p>The link you clicked matches a common phishing pattern (for example: an IP-address host, punycode domain, or an <code>@</code> userinfo trick).</p>
+    <p><strong>Destination:</strong></p>
+    <p><code id="dest">(loading…)</code></p>
+
+    <div class="row">
+      <button id="goBack">Go back</button>
+      <button class="primary" id="continue">Continue anyway</button>
+    </div>
+
+    <p class="muted" style="margin-top:16px;">
+      Tip: you can manage allowed domains in the extension Options page.
+    </p>
+  </div>
+
+  <script src="phishing_warning.js"></script>
+</body>
+</html>

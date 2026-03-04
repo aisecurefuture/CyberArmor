@@ -1,0 +1,32 @@
+# AIShields Endpoint Agent - Python Dependencies
+# Core
+psutil>=5.9.0
+watchdog>=3.0.0
+httpx>=0.25.0
+pydantic>=2.0.0
+
+# Cryptography
+cryptography>=41.0.0
+
+# Database (local policy/audit cache)
+aiosqlite>=0.19.0
+
+# Scheduling
+apscheduler>=3.10.0
+
+# Platform-specific (optional)
+# macOS: no additional deps (uses native frameworks)
+# Windows: pywin32 (uncomment below)
+# pywin32>=306; sys_platform == "win32"
+
+# PQC (optional — falls back to X25519/Ed25519 if missing)
+# liboqs-python>=0.9.0
+
+# Deep packet inspection (optional)
+# scapy>=2.5.0
+
+# Network capture (optional)
+# pyshark>=0.6
+
+# Logging / telemetry
+structlog>=23.0.0

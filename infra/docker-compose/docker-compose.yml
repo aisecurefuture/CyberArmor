@@ -1,0 +1,213 @@
+services:
+  # --- Data Stores ---
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_PASSWORD: cyberarmor
+      POSTGRES_USER: cyberarmor
+      POSTGRES_DB: cyberarmor
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyberarmor"]
+      interval: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  # --- Core Services ---
+  control-plane:
+    build:
+      context: ../../
+      dockerfile: services/control-plane/Dockerfile
+    env_file: [.env]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      retries: 3
+
+  policy:
+    build:
+      context: ../../
+      dockerfile: services/policy/Dockerfile
+    env_file: [.env]
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ["8001:8001"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      retries: 3
+
+  detection:
+    build:
+      context: ../../
+      dockerfile: services/detection/Dockerfile
+    ports: ["8002:8002"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 10s
+      retries: 3
+
+  response:
+    build:
+      context: ../../
+      dockerfile: services/response/Dockerfile
+    env_file: [.env]
+    depends_on: [proxy-agent]
+    ports: ["8003:8003"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 10s
+      retries: 3
+
+  identity:
+    build:
+      context: ../../
+      dockerfile: services/identity/Dockerfile
+    env_file: [.env]
+    ports: ["8004:8004"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/health')"]
+      interval: 10s
+      retries: 3
+
+  siem-connector:
+    build:
+      context: ../../
+      dockerfile: services/siem-connector/Dockerfile
+    env_file: [.env]
+    ports: ["8005:8005"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health')"]
+      interval: 10s
+      retries: 3
+
+  compliance:
+    build:
+      context: ../../
+      dockerfile: services/compliance/Dockerfile
+    env_file: [.env]
+    ports: ["8006:8006"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8006/health')"]
+      interval: 10s
+      retries: 3
+
+  # --- AISR Runtime (single decision endpoint) ---
+  runtime:
+    build:
+      context: ../../
+      dockerfile: services/runtime/Dockerfile
+    env_file: [.env]
+    depends_on:
+      control-plane: { condition: service_healthy }
+      policy: { condition: service_healthy }
+      detection: { condition: service_healthy }
+      response: { condition: service_healthy }
+      compliance: { condition: service_healthy }
+    ports: ["8007:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      retries: 3
+
+  # --- Agents ---
+  proxy-agent:
+    build:
+      context: ../../
+      dockerfile: agents/proxy-agent/Dockerfile
+    env_file: [.env]
+    depends_on:
+      policy: { condition: service_healthy }
+    ports: ["8010:8010"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8010/health')"]
+      interval: 10s
+      retries: 3
+
+  # --- Transparent Proxy ---
+  transparent-proxy:
+    build:
+      context: ../../
+      dockerfile: services/proxy/Dockerfile
+    env_file: [.env]
+    depends_on: [runtime, detection, policy]
+    ports:
+      - "8080:8080"   # HTTP proxy
+      - "8443:8443"   # HTTPS proxy
+      - "8081:8081"   # Management API
+    volumes:
+      - certs:/etc/aishields/certs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8080), timeout=2).close()"]
+      interval: 10s
+      retries: 3
+
+
+  # --- Demo Target (mock LLM endpoint) ---
+  llm-mock:
+    build:
+      context: ../../
+      dockerfile: services/llm-mock/Dockerfile
+    ports: ["9000:9000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+      interval: 10s
+      retries: 3
+
+  # --- Demo Client (run via: docker compose --profile demo run --rm demo-client) ---
+  demo-client:
+    build:
+      context: ../../
+      dockerfile: clients/demo-client/Dockerfile
+    environment:
+      DEMO_PROXY_URL: http://transparent-proxy:8080
+      DEMO_TARGET_URL: http://llm-mock:9000/v1/chat/completions
+      TENANT_ID: default
+    depends_on:
+      transparent-proxy: { condition: service_healthy }
+      llm-mock: { condition: service_healthy }
+    profiles: ["demo"]
+
+
+  # --- Demo Web Page (sales-friendly: open in browser) ---
+  demo-web:
+    build:
+      context: ../../
+      dockerfile: clients/demo-web/Dockerfile
+    environment:
+      DEMO_PROXY_URL: http://transparent-proxy:8080
+      DEMO_TARGET_URL: http://llm-mock:9000/v1/chat/completions
+      TENANT_ID: default
+    depends_on:
+      transparent-proxy: { condition: service_healthy }
+      llm-mock: { condition: service_healthy }
+    ports: ["8020:8020"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen(\"http://localhost:8020/health\")"]
+      interval: 10s
+      retries: 3
+
+  # --- Dashboard ---
+  dashboard:
+    image: nginx:alpine
+    depends_on: [control-plane, policy, proxy-agent, identity, siem-connector, compliance]
+    ports: ["3000:80"]
+    volumes:
+      - ../../admin-dashboard:/usr/share/nginx/html:ro
+      - ./nginx.dashboard.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  pgdata:
+  certs:

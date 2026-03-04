@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aishields.fullname" . }}-config
+  namespace: {{ include "aishields.namespace" . }}
+  labels:
+    {{- include "aishields.labels" . | nindent 4 }}
+data:
+  # Service discovery URLs
+  CONTROL_PLANE_URL: "http://{{ include "aishields.fullname" . }}-control-plane:{{ .Values.controlPlane.service.port }}"
+  POLICY_URL: "http://{{ include "aishields.fullname" . }}-policy:{{ .Values.policy.service.port }}"
+  DETECTION_URL: "http://{{ include "aishields.fullname" . }}-detection:{{ .Values.detection.service.port }}"
+  RESPONSE_URL: "http://{{ include "aishields.fullname" . }}-response:{{ .Values.response.service.port }}"
+  IDENTITY_URL: "http://{{ include "aishields.fullname" . }}-identity:{{ .Values.identity.service.port }}"
+  SIEM_CONNECTOR_URL: "http://{{ include "aishields.fullname" . }}-siem-connector:{{ .Values.siemConnector.service.port }}"
+  COMPLIANCE_URL: "http://{{ include "aishields.fullname" . }}-compliance:{{ .Values.compliance.service.port }}"
+  PROXY_AGENT_URL: "http://{{ include "aishields.fullname" . }}-proxy-agent:{{ .Values.proxyAgent.service.port }}"
+  DASHBOARD_URL: "http://{{ include "aishields.fullname" . }}-admin-dashboard:{{ .Values.adminDashboard.service.port }}"
+
+  # Database
+  DATABASE_HOST: "{{ include "aishields.fullname" . }}-postgresql"
+  DATABASE_PORT: {{ .Values.postgresql.service.port | quote }}
+  DATABASE_NAME: {{ .Values.postgresql.credentials.database | quote }}
+
+  # Redis
+  REDIS_HOST: "{{ include "aishields.fullname" . }}-redis"
+  REDIS_PORT: {{ .Values.redis.service.port | quote }}
+
+  # Security settings
+  FIPS_MODE: {{ .Values.global.fipsMode | quote }}
+  PQC_ENABLED: {{ .Values.global.pqcEnabled | quote }}
+
+  # Observability
+  LOG_LEVEL: {{ .Values.global.logLevel | quote }}
+  LOG_FORMAT: "json"
+
+  # Environment
+  ENVIRONMENT: {{ .Values.global.environment | quote }}
+
+  # SIEM configuration
+  SIEM_OUTPUT_FORMAT: "cef"
+  SIEM_BATCH_SIZE: "100"
+  SIEM_FLUSH_INTERVAL: "10s"

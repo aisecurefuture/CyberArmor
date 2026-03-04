@@ -1,0 +1,14 @@
+#!/usr/bin/env bpftrace
+
+// Logs outbound connect() attempts. Useful for discovering AI tools calling AI APIs.
+// NOTE: This is a starter script. Production should use libbpf CO-RE + ringbuf.
+
+tracepoint:syscalls:sys_enter_connect
+{
+  // pid/comm
+  $pid = pid;
+  $comm = comm;
+  // destination is in user memory; bpftrace can't reliably decode sockaddr here across arch.
+  // We still log connect attempts with pid+comm; collector can enrich via /proc.
+  printf("CONNECT pid=%d comm=%s\n", $pid, $comm);
+}

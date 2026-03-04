@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "AIShields Protect",
+  "version": "1.0.0",
+  "description": "Enterprise AI security — prompt injection detection, DLP, phishing protection",
+  "permissions": ["storage", "activeTab", "declarativeNetRequest", "scripting", "alarms"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "../chromium-shared/background.js", "type": "module" },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["../chromium-shared/content.js"],
+    "run_at": "document_start"
+  }],
+  "action": { "default_popup": "../chromium-shared/popup.html" },
+  "options_page": "../chromium-shared/options.html"
+}

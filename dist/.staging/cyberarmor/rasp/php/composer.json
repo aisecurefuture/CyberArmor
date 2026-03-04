@@ -1,0 +1,9 @@
+{
+  "name": "aishields/rasp",
+  "description": "CyberArmor.ai RASP - Runtime Application Self-Protection for AI/LLM APIs",
+  "type": "library",
+  "license": "MIT",
+  "autoload": { "psr-4": { "CyberArmor.ai\\RASP\\": "" } },
+  "require": { "php": ">=8.1" },
+  "suggest": { "nyholm/psr7": "For PSR-15 middleware responses" }
+}

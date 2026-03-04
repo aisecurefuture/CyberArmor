@@ -1,0 +1,46 @@
+{{- if .Values.serviceAccount.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "aishields.fullname" . }}-role
+  namespace: {{ include "aishields.namespace" . }}
+  labels:
+    {{- include "aishields.labels" . | nindent 4 }}
+rules:
+  # Allow reading ConfigMaps for service configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading Secrets for credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading own pod information (for leader election, etc.)
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Allow creating events for audit logging
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  # Allow coordination for leader election
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "aishields.fullname" . }}-rolebinding
+  namespace: {{ include "aishields.namespace" . }}
+  labels:
+    {{- include "aishields.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "aishields.fullname" . }}-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "aishields.serviceAccountName" . }}
+    namespace: {{ include "aishields.namespace" . }}
+{{- end }}
