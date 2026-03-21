@@ -1,0 +1,51 @@
+[package]
+name        = "cyberarmor-sdk"
+version     = "2.0.0"
+edition     = "2021"
+description = "CyberArmor AI Identity Control Plane SDK for Rust"
+license     = "Apache-2.0"
+homepage    = "https://cyberarmor.ai"
+repository  = "https://github.com/cyberarmor-io/cyberarmor-sdk-rust"
+keywords    = ["cyberarmor", "ai", "security", "policy", "identity"]
+categories  = ["api-bindings", "web-programming::http-client"]
+authors     = ["CyberArmor Engineering <sdk@cyberarmor.ai>"]
+readme      = "README.md"
+rust-version = "1.75"
+
+[dependencies]
+# Async runtime
+tokio        = { version = "1", features = ["full"] }
+
+# HTTP client — JSON feature enables reqwest::RequestBuilder::json()
+reqwest      = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Serialisation
+serde        = { version = "1", features = ["derive"] }
+serde_json   = "1"
+
+# Error handling
+thiserror    = "1"
+
+# Async traits (stable in Rust 1.75+ via RPITIT; kept for broader compatibility)
+async-trait  = "0.1"
+
+# Structured logging
+tracing      = "0.1"
+
+# HMAC request signing
+hmac         = "0.12"
+sha2         = "0.10"
+hex          = "0.4"
+
+# Timestamps
+chrono       = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tokio        = { version = "1", features = ["full", "test-util"] }
+mockito      = "1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[features]
+default = []
+# Enable the OpenAI provider (requires no additional dependencies beyond reqwest).
+openai  = []

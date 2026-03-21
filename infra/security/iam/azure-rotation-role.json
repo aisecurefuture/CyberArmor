@@ -1,0 +1,16 @@
+{
+  "Name": "CyberArmorRotationOperator",
+  "IsCustom": true,
+  "Description": "Least-privilege role for CyberArmor secret rotation workflows.",
+  "Actions": [
+    "Microsoft.KeyVault/vaults/secrets/read",
+    "Microsoft.KeyVault/vaults/secrets/write",
+    "Microsoft.KeyVault/vaults/secrets/versions/read"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP>/providers/Microsoft.KeyVault/vaults/<VAULT_NAME>"
+  ]
+}

@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+    <PackageId>CyberArmor.SDK</PackageId>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <Authors>CyberArmor AI</Authors>
+    <Company>CyberArmor AI</Company>
+    <Product>CyberArmor SDK</Product>
+    <Description>CyberArmor AI Identity Control Plane SDK for .NET — zero-trust policy enforcement, audit emission, and AI provider wrapping for enterprise AI security.</Description>
+    <Copyright>Copyright © 2026 CyberArmor AI</Copyright>
+    <PackageTags>ai;security;policy;identity;openai;anthropic;rasp;zero-trust</PackageTags>
+    <PackageProjectUrl>https://cyberarmor.ai</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/cyberarmor-ai/cyberarmor-sdk-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <RootNamespace>CyberArmor</RootNamespace>
+    <AssemblyName>CyberArmor.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="OpenAI" Version="2.1.0" />
+  </ItemGroup>
+
+  <!-- System.Threading.Channels ships in-box for net8; only needed explicitly for net6 -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

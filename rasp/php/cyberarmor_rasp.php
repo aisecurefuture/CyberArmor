@@ -1,0 +1,2 @@
+<?php
+// Canonical CyberArmor bootstrap.

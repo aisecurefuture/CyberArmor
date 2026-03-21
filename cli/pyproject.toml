@@ -1,0 +1,94 @@
+[build-system]
+requires      = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+# ---------------------------------------------------------------------------
+# Project metadata  (PEP 621)
+# ---------------------------------------------------------------------------
+[project]
+name        = "cyberarmor-cli"
+version     = "2.0.0"
+description = "CyberArmor AI Identity Control Plane — Command-Line Interface"
+readme      = "README.md"
+license     = { text = "Proprietary" }
+requires-python = ">=3.9"
+
+authors = [
+    { name = "CyberArmor / CyberArmor", email = "sdk@cyberarmor.ai" },
+]
+
+keywords = [
+    "ai", "security", "identity", "llm", "agent",
+    "zero-trust", "policy", "audit", "cyberarmor", "cyberarmor",
+]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Utilities",
+]
+
+# No third-party dependencies — only Python stdlib (urllib, json, argparse, os)
+dependencies = []
+
+[project.optional-dependencies]
+# Optional: faster JSON / HTTP if users want them
+fast = [
+    "urllib3>=2.0",
+]
+dev = [
+    "pytest>=7",
+    "pytest-cov",
+    "responses",
+    "black",
+    "ruff",
+    "mypy",
+]
+
+[project.urls]
+Homepage      = "https://cyberarmor.ai"
+Documentation = "https://docs.cyberarmor.ai/cli"
+Repository    = "https://github.com/cyberarmor/cyberarmor-cli"
+"Bug Tracker" = "https://github.com/cyberarmor/cyberarmor-cli/issues"
+
+# ---------------------------------------------------------------------------
+# Entry points — installs the `cyberarmor` shell command
+# ---------------------------------------------------------------------------
+[project.scripts]
+cyberarmor = "cyberarmor_cli:main"
+
+# ---------------------------------------------------------------------------
+# Package discovery
+# ---------------------------------------------------------------------------
+[tool.setuptools]
+py-modules = ["cyberarmor_cli"]
+
+# ---------------------------------------------------------------------------
+# Tool configuration
+# ---------------------------------------------------------------------------
+[tool.black]
+line-length    = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+select      = ["E", "F", "W", "I", "UP", "B", "C4"]
+ignore      = ["E501"]   # long lines handled by black
+
+[tool.mypy]
+python_version         = "3.9"
+strict                 = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths   = ["tests"]
+addopts     = "-v --tb=short"

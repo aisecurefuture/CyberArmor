@@ -1,0 +1,545 @@
+# =============================================================================
+# CyberArmor Protect - Helm Chart Values
+# =============================================================================
+# This file contains all configurable values for the CyberArmor Protect
+# enterprise AI security platform.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Global settings
+# ---------------------------------------------------------------------------
+global:
+  namespace: cyberarmor
+  imagePullSecrets:
+    - name: cyberarmor-registry
+  imageRegistry: ghcr.io/cyberarmor
+  environment: production
+  pqcEnabled: true
+  fipsMode: false
+  logLevel: info
+
+# ---------------------------------------------------------------------------
+# Control Plane - Main API gateway
+# ---------------------------------------------------------------------------
+controlPlane:
+  image:
+    repository: control-plane
+    tag: ""  # defaults to .Chart.AppVersion
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8000
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# Policy Engine
+# ---------------------------------------------------------------------------
+policy:
+  image:
+    repository: policy
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8001
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# Threat Detection
+# ---------------------------------------------------------------------------
+detection:
+  image:
+    repository: detection
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8002
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 20
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 65
+    targetMemoryUtilizationPercentage: 75
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# Incident Response
+# ---------------------------------------------------------------------------
+response:
+  image:
+    repository: response
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8003
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# Identity Provider Integration
+# ---------------------------------------------------------------------------
+identity:
+  image:
+    repository: identity
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8004
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# SIEM Connector
+# ---------------------------------------------------------------------------
+siemConnector:
+  image:
+    repository: siem-connector
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8005
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# Compliance Framework Engine
+# ---------------------------------------------------------------------------
+compliance:
+  image:
+    repository: compliance
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8006
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# AI Traffic Transparent Proxy
+# ---------------------------------------------------------------------------
+proxyAgent:
+  image:
+    repository: proxy-agent
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8010
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# Admin Dashboard (Nginx)
+# ---------------------------------------------------------------------------
+adminDashboard:
+  image:
+    repository: admin-dashboard
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 80
+  healthCheck:
+    path: /
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# PostgreSQL
+# ---------------------------------------------------------------------------
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  storage:
+    size: 50Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  credentials:
+    database: cyberarmor
+    username: cyberarmor
+    # password is stored in secrets.yaml; override via --set or external secret
+    password: changeme-use-external-secret
+  service:
+    port: 5432
+
+# ---------------------------------------------------------------------------
+# Redis
+# ---------------------------------------------------------------------------
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  storage:
+    size: 10Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  # password is stored in secrets.yaml; override via --set or external secret
+  password: changeme-use-external-secret
+  service:
+    port: 6379
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/rate-limit: "100"
+  host: cyberarmor.example.com
+  tls:
+    enabled: true
+    secretName: cyberarmor-tls
+  mtls:
+    enabled: false
+    # Kubernetes secret containing client CA bundle used by ingress mTLS auth
+    # (for nginx ingress, referenced as <namespace>/<secretName>)
+    caSecretName: cyberarmor-client-ca
+    verifyDepth: 2
+    passCertificateToUpstream: false
+
+# ---------------------------------------------------------------------------
+# Network Policy
+# ---------------------------------------------------------------------------
+networkPolicy:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# Monitoring
+# ---------------------------------------------------------------------------
+monitoring:
+  prometheus:
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      additionalLabels: {}
+
+# ---------------------------------------------------------------------------
+# Service Account
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  annotations: {}
+    # eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/cyberarmor
+    # iam.gke.io/gcp-service-account: cyberarmor@project.iam.gserviceaccount.com
+  name: ""
+
+# =============================================================================
+# AI Identity Control Plane Services
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Agent Identity Service - non-human AI agent identity management
+# ---------------------------------------------------------------------------
+agentIdentity:
+  image:
+    repository: agent-identity
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8008
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: true
+    minAvailable: 1
+  # Agent Identity specific config
+  config:
+    jwtSecret: ""          # AGENT_IDENTITY_JWT_SECRET — override via secrets
+    tokenExpirySeconds: 3600
+    spiffeEnabled: false
+    spiffeTrustDomain: "cyberarmor.ai"
+
+# ---------------------------------------------------------------------------
+# AI Router - unified AI provider gateway with encrypted credential vault
+# ---------------------------------------------------------------------------
+aiRouter:
+  image:
+    repository: ai-router
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8009
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 20        # scale aggressively — handles all AI traffic
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 75
+  pdb:
+    enabled: true
+    minAvailable: 1
+  config:
+    fernetKeySecret: ""    # AI_ROUTER_FERNET_KEY — credential encryption key
+    defaultRateLimitPerMin: 60
+    defaultMonthlyBudgetUsd: 500
+    providerTimeout: 120   # seconds
+
+# ---------------------------------------------------------------------------
+# Audit Graph Service - immutable audit events and action graph
+# ---------------------------------------------------------------------------
+audit:
+  image:
+    repository: audit
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env: {}
+  service:
+    type: ClusterIP
+    port: 8011
+  healthCheck:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  pdb:
+    enabled: true
+    minAvailable: 1
+  config:
+    hmacSecret: ""         # AUDIT_HMAC_SECRET — event signing key
+    retentionDays: 365     # event retention
+    exportEnabled: true

@@ -1,0 +1,330 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ---------------------------------------------------------------------------
+# Project metadata
+# ---------------------------------------------------------------------------
+
+[project]
+name = "cyberarmor-sdk"
+version = "2.0.0"
+description = "CyberArmor AI Identity Control Plane SDK — Zero-trust policy enforcement and audit for AI agents"
+readme = "README.md"
+license = { text = "Proprietary" }
+requires-python = ">=3.9"
+authors = [
+    { name = "CyberArmor", email = "sdk@cyberarmor.ai" },
+]
+keywords = [
+    "ai",
+    "security",
+    "identity",
+    "policy",
+    "zero-trust",
+    "llm",
+    "agent",
+    "audit",
+    "compliance",
+    "rasp",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+# ---------------------------------------------------------------------------
+# Core runtime dependencies (always installed)
+# ---------------------------------------------------------------------------
+
+dependencies = [
+    # Async HTTP client — used for policy and audit service calls
+    "httpx>=0.25.0",
+    # Data validation and settings management
+    "pydantic>=2.0",
+    # JWT token creation and validation (identity service)
+    "python-jose[cryptography]>=3.3.0",
+    # Structured logging
+    "structlog>=23.1.0",
+]
+
+# ---------------------------------------------------------------------------
+# Optional dependency groups
+# ---------------------------------------------------------------------------
+
+[project.optional-dependencies]
+
+# AI provider integrations
+openai = [
+    "openai>=1.30.0",
+]
+anthropic = [
+    "anthropic>=0.28.0",
+]
+google = [
+    "google-generativeai>=0.7.0",
+]
+aws = [
+    "boto3>=1.34.0",
+]
+azure = [
+    "openai>=1.30.0",          # AzureOpenAI ships in the openai package
+]
+xai = [
+    "openai>=1.30.0",          # xAI Grok is OpenAI-compatible
+]
+perplexity = [
+    "openai>=1.30.0",          # Perplexity is OpenAI-compatible
+]
+meta = [
+    "openai>=1.30.0",          # Together AI / Fireworks / Ollama are OpenAI-compatible
+]
+
+# Framework integrations
+langchain = [
+    "langchain>=0.2.0",
+    "langchain-core>=0.2.0",
+]
+llamaindex = [
+    "llama-index-core>=0.10.0",
+]
+
+# Web framework middleware
+fastapi = [
+    "fastapi>=0.111.0",
+    "starlette>=0.37.0",
+]
+flask = [
+    "flask>=3.0.0",
+]
+django = [
+    "django>=4.2",
+]
+
+# CLI support
+cli = [
+    "typer[all]>=0.12.0",
+    "rich>=13.0.0",
+]
+
+# All providers at once
+all-providers = [
+    "openai>=1.30.0",
+    "anthropic>=0.28.0",
+    "google-generativeai>=0.7.0",
+    "boto3>=1.34.0",
+]
+
+# All framework integrations at once
+all-frameworks = [
+    "langchain>=0.2.0",
+    "langchain-core>=0.2.0",
+    "llama-index-core>=0.10.0",
+    "fastapi>=0.111.0",
+    "starlette>=0.37.0",
+    "flask>=3.0.0",
+    "django>=4.2",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "respx>=0.20.0",
+    "mypy>=1.10.0",
+    "ruff>=0.4.0",
+    "hatch>=1.12.0",
+    "pre-commit>=3.7.0",
+    # Stubs
+    "boto3-stubs[bedrock-runtime]>=1.34.0",
+    "types-python-jose>=3.3.0",
+]
+
+# Full install (everything except dev tooling)
+all = [
+    "cyberarmor-sdk[all-providers,all-frameworks,cli]",
+]
+
+# ---------------------------------------------------------------------------
+# Entry points
+# ---------------------------------------------------------------------------
+
+[project.scripts]
+cyberarmor = "cyberarmor.cli:app"
+
+# ---------------------------------------------------------------------------
+# Project URLs
+# ---------------------------------------------------------------------------
+
+[project.urls]
+Homepage = "https://cyberarmor.ai"
+Documentation = "https://docs.cyberarmor.ai/sdk/python"
+Repository = "https://github.com/cyberarmor-ai/cyberarmor-sdk-python"
+Changelog = "https://github.com/cyberarmor-ai/cyberarmor-sdk-python/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/cyberarmor-ai/cyberarmor-sdk-python/issues"
+
+# ---------------------------------------------------------------------------
+# Hatchling build configuration
+# ---------------------------------------------------------------------------
+
+[tool.hatch.build]
+include = [
+    "cyberarmor/**/*.py",
+    "cyberarmor/py.typed",
+]
+exclude = [
+    "tests/**",
+    "docs/**",
+    "**/__pycache__",
+    "**/*.pyc",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["cyberarmor"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/cyberarmor",
+    "/tests",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/pyproject.toml",
+]
+
+# ---------------------------------------------------------------------------
+# Hatch environments
+# ---------------------------------------------------------------------------
+
+[tool.hatch.envs.default]
+dependencies = [
+    "cyberarmor-sdk[dev]",
+]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest tests/ -v --cov=cyberarmor --cov-report=term-missing {args}"
+lint = "ruff check cyberarmor/ tests/"
+fmt  = "ruff format cyberarmor/ tests/"
+type = "mypy cyberarmor/"
+all  = ["lint", "type", "test"]
+
+[tool.hatch.envs.ci]
+dependencies = [
+    "cyberarmor-sdk[dev,all-providers,all-frameworks]",
+]
+
+[tool.hatch.envs.ci.scripts]
+test = "pytest tests/ -v --cov=cyberarmor --cov-report=xml"
+
+# ---------------------------------------------------------------------------
+# Ruff configuration
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+src = ["cyberarmor", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "ANN",  # flake8-annotations (partial)
+    "S",    # flake8-bandit (security)
+    "RUF",  # Ruff-specific rules
+]
+ignore = [
+    "ANN101",  # Missing type annotation for `self`
+    "ANN102",  # Missing type annotation for `cls`
+    "ANN401",  # Dynamically typed expressions (Any) — needed for kwargs
+    "S101",    # Use of assert — acceptable in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "S"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cyberarmor"]
+
+# ---------------------------------------------------------------------------
+# Mypy configuration
+# ---------------------------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+
+[[tool.mypy.overrides]]
+module = [
+    "anthropic.*",
+    "google.generativeai.*",
+    "boto3.*",
+    "botocore.*",
+    "jose.*",
+    "langchain.*",
+    "langchain_core.*",
+    "llama_index.*",
+    "flask.*",
+    "django.*",
+]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# Pytest configuration
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+log_cli = true
+log_cli_level = "INFO"
+filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    "unit: fast, isolated unit tests",
+    "integration: tests that call real external services",
+    "slow: tests that take more than 5 seconds",
+]
+
+# ---------------------------------------------------------------------------
+# Coverage configuration
+# ---------------------------------------------------------------------------
+
+[tool.coverage.run]
+source = ["cyberarmor"]
+omit = [
+    "cyberarmor/cli.py",
+    "tests/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]

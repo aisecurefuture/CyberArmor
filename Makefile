@@ -1,15 +1,14 @@
-.PHONY: dist-oss dist-commercial clean-dist verify-brand-surface demo
+.PHONY: dist dist-commercial clean-dist verify-brand-surface verify-cyberarmor-brand verify-dashboard-contract demo
 
-# Build branded distribution zips from this single repo.
+# Build CyberArmor distribution zip from this single repo.
 #
-# dist-oss         -> AIShields OSS zip
-# dist-commercial  -> CyberArmor.ai commercial zip
-# verify-brand-surface -> fail if brand tokens appear outside controlled surface
-# demo             -> bring up docker-compose and run a small smoke test
+# dist                  -> CyberArmor commercial zip
+# verify-brand-surface  -> fail if brand tokens appear outside controlled surface
+# verify-cyberarmor-brand -> fail if dual-brand staging/targets reappear
+# demo                  -> bring up docker-compose and run a small smoke test
 
 DIST_DIR := dist
 
-OSS_ZIP := $(DIST_DIR)/AIShields-oss.zip
 COMM_ZIP := $(DIST_DIR)/CyberArmor-commercial.zip
 
 PY := python3
@@ -17,20 +16,22 @@ PY := python3
 clean-dist:
 	rm -rf $(DIST_DIR)
 
-$(OSS_ZIP):
-	$(PY) scripts/dualbrand/build.py --brand aishields --out $(OSS_ZIP)
-
 $(COMM_ZIP):
-	$(PY) scripts/dualbrand/build.py --brand cyberarmor --out $(COMM_ZIP)
+	$(PY) scripts/branding/build.py --brand cyberarmor --out $(COMM_ZIP)
 
-dist-oss: $(OSS_ZIP)
-	@echo "Built: $(OSS_ZIP)"
+dist: dist-commercial
 
 dist-commercial: $(COMM_ZIP)
 	@echo "Built: $(COMM_ZIP)"
 
 verify-brand-surface:
-	$(PY) scripts/dualbrand/verify_surface.py
+	$(PY) scripts/branding/verify_surface.py
+
+verify-cyberarmor-brand:
+	$(PY) scripts/security/check_cyberarmor_single_brand.py
+
+verify-dashboard-contract:
+	bash scripts/dashboard-api-contract.sh
 
 # One-command demo (requires docker + docker compose)
 demo:

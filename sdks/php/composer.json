@@ -1,0 +1,59 @@
+{
+    "name": "cyberarmor/sdk",
+    "description": "CyberArmor AI Identity Control Plane SDK for PHP",
+    "version": "2.0.0",
+    "type": "library",
+    "keywords": ["cyberarmor", "ai", "security", "policy", "identity", "openai", "anthropic"],
+    "homepage": "https://cyberarmor.ai",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "CyberArmor Engineering",
+            "email": "sdk@cyberarmor.ai",
+            "homepage": "https://cyberarmor.ai"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/cyberarmor-io/cyberarmor-sdk-php/issues",
+        "source": "https://github.com/cyberarmor-io/cyberarmor-sdk-php"
+    },
+    "require": {
+        "php": "^8.1",
+        "ext-curl": "*",
+        "ext-json": "*",
+        "ext-openssl": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "mockery/mockery": "^1.6",
+        "phpstan/phpstan": "^1.10",
+        "squizlabs/php_codesniffer": "^3.8"
+    },
+    "suggest": {
+        "openai-php/client": "Required for CyberArmor\\Providers\\OpenAI wrapper (~^0.10)",
+        "anthropic-php/client": "Required for injecting an Anthropic SDK client into CyberArmor\\Providers\\Anthropic"
+    },
+    "autoload": {
+        "psr-4": {
+            "CyberArmor\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "CyberArmor\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit --testdox",
+        "analyse": "phpstan analyse src --level=max",
+        "cs": "phpcs src tests --standard=PSR12"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "composer/package-versions-deprecated": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

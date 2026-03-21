@@ -1,10 +1,10 @@
-# AIShields Protect
+# CyberArmor
 
 **Enterprise AI Security Platform** — Comprehensive protection for organizations deploying AI, Agentic AI, and LLM-powered applications.
 
 ## Overview
 
-AIShields Protect is a zero-trust, multi-layered security platform that provides real-time monitoring, policy enforcement, data loss prevention, and compliance management for enterprise AI workloads. Built with FIPS 140-3 and CNSA 2.0+ post-quantum cryptography throughout.
+CyberArmor is a zero-trust, multi-layered security platform that provides real-time monitoring, policy enforcement, data loss prevention, and compliance management for enterprise AI workloads. Built with FIPS 140-3 and CNSA 2.0+ post-quantum cryptography throughout.
 
 ## Architecture
 
@@ -19,8 +19,8 @@ AIShields Protect is a zero-trust, multi-layered security platform that provides
 │ Plane  │ Engine │  ion   │        │Provider│Connector│ Engine  │
 │ :8000  │ :8001  │ :8002  │ :8003  │ :8004  │ :8005  │ :8006   │
 ├────────┴────────┴────────┴────────┴────────┴────────┴──────────┤
-│                   Transparent AI Proxy (:8010)                  │
-│               (mitmproxy dev / Envoy production)                │
+│                   Transparent AI Proxy (:8080)                  │
+│             (mitmproxy dev; HTTPS on :8443 in dev)              │
 ├─────────────────────────────────────────────────────────────────┤
 │   PostgreSQL              Redis              Message Queue      │
 ├──────────┬──────────┬──────────┬──────────┬─────────────────────┤
@@ -50,7 +50,9 @@ AIShields Protect is a zero-trust, multi-layered security platform that provides
 | Identity Provider | 8004 | SSO integration (Entra ID, Okta, Ping, AWS IAM) |
 | SIEM Connector | 8005 | Output to Splunk, Sentinel, QRadar, Elastic, Google SecOps, Syslog/CEF |
 | Compliance Engine | 8006 | 14 compliance frameworks with evidence-based assessment |
-| Transparent Proxy | 8010 | AI traffic interception, inspection, and policy enforcement |
+| Proxy Agent | 8010 | Policy decision API and local block actions |
+| Transparent Proxy | 8080 / 8443 | AI traffic interception, inspection, and policy enforcement |
+| Integration Control | 8012 | SaaS integration discovery, OAuth scope visibility, and control actions |
 
 ## Security Features
 
@@ -106,9 +108,9 @@ Access the admin dashboard at `http://localhost:3000`
 ### Kubernetes / Helm (Production)
 
 ```bash
-cd infra/helm/aishields
+cd infra/helm/cyberarmor
 # Edit values.yaml for your environment
-helm install aishields . -n aishields --create-namespace
+helm install cyberarmor . -n cyberarmor --create-namespace
 ```
 
 ### Endpoint Agent
@@ -116,7 +118,7 @@ helm install aishields . -n aishields --create-namespace
 ```bash
 cd agents/endpoint-agent
 pip install -r requirements.txt
-sudo python installer.py install --server https://your-aishields-server --api-key YOUR_KEY
+sudo python installer.py install --server https://your-cyberarmor-server --api-key YOUR_KEY
 ```
 
 ## Project Structure
@@ -131,7 +133,7 @@ ai-protect-system-claude-4.6/
 │   │   ├── monitors/         # Process, network, file, AI tool monitors
 │   │   ├── platform/         # macOS, Windows, Linux integrations
 │   │   └── zero_day/         # RCE guard & sandbox
-│   ├── proxy-agent/          # mitmproxy-based transparent proxy
+│   ├── proxy-agent/          # Policy decision agent API
 │   └── ros-agent/            # ROS2 robotics security agent
 ├── extensions/
 │   ├── chromium-shared/      # Shared Chrome/Brave/Edge extension (MV3)
@@ -146,13 +148,13 @@ ai-protect-system-claude-4.6/
 ├── infra/
 │   ├── docker-compose/       # Docker Compose for local development
 │   ├── envoy/                # Envoy proxy config + Lua filter
-│   └── helm/aishields/       # Kubernetes Helm chart
+│   └── helm/cyberarmor/      # Kubernetes Helm chart
 ├── kernel/
 │   ├── linux/                # eBPF monitoring programs
 │   ├── macos/                # Endpoint Security system extension
 │   └── windows/              # Minifilter + WFP driver
 ├── libs/
-│   └── aishields-core/       # Shared PQC crypto library
+│   └── cyberarmor-core/      # Shared PQC crypto library
 ├── mobile/                   # React Native iOS/Android app
 ├── rasp/                     # Runtime Application Self-Protection
 │   ├── java/                 # Java agent (javaagent)
@@ -197,24 +199,26 @@ See [docs/azure-app-registration.md](docs/azure-app-registration.md) for Microso
 Each RASP agent intercepts AI API calls at the application layer:
 
 ```python
-# Python example
-import aishields_rasp
-aishields_rasp.init(server="https://your-server", api_key="YOUR_KEY")
+# Python example (canonical)
+import cyberarmor_rasp
+cyberarmor_rasp.init(server="https://your-server", api_key="YOUR_KEY")
+# Canonical import is `cyberarmor_rasp`.
 
 # Automatically intercepts requests/httpx calls to AI endpoints
 ```
 
 ```javascript
-// Node.js example
-const aishields = require('@aishields/rasp');
-aishields.init({ server: 'https://your-server', apiKey: 'YOUR_KEY' });
+// Node.js example (canonical export path)
+const cyberarmor = require('cyberarmor-rasp');
+cyberarmor.init({ server: 'https://your-server', apiKey: 'YOUR_KEY' });
+// Legacy import `require('cyberarmor-rasp/legacy')` remains supported.
 // Automatically patches http/https modules
 ```
 
 ```go
 // Go example
-import "github.com/aishields/rasp"
-client := &http.Client{Transport: rasp.NewTransport(http.DefaultTransport, config)}
+import ca "github.com/cyberarmor/rasp-go"
+client := &http.Client{Transport: ca.New(config).RoundTripper(http.DefaultTransport)}
 ```
 
 ## Development
@@ -241,7 +245,7 @@ cd services/compliance && uvicorn main:app --port 8006
 
 ```bash
 # Shared crypto library
-cd libs/aishields-core && python -m pytest tests/
+cd libs/cyberarmor-core && python -m pytest tests/
 
 # Policy engine
 cd services/policy && python -m pytest
@@ -252,7 +256,7 @@ cd services/compliance && python -m pytest
 
 ## License
 
-Proprietary - AIShields Inc. All rights reserved.
+Proprietary - Gratitech Research and Charitable Endeavor Corporation - All rights reserved.
 
 ## Support
 

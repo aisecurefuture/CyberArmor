@@ -1,0 +1,5336 @@
+openapi: 3.1.0
+
+info:
+  title: CyberArmor AI Identity Control Plane API
+  version: 2.0.0
+  description: |
+    ## CyberArmor / CyberArmor — AI Identity Control Plane
+
+    Zero-trust security fabric for AI agents and LLM workloads.
+    Covers three microservices:
+
+    | Service           | Default Port | Purpose                                      |
+    |-------------------|:------------:|----------------------------------------------|
+    | Agent Identity    | 8008         | Agent registration, JWT tokens, delegations  |
+    | AI Router         | 8009         | Unified LLM proxy, credential vault          |
+    | Audit Graph       | 8011         | Immutable audit events, causal action graphs |
+
+    ### Authentication
+    All endpoints require **either**:
+    - `Authorization: Bearer <jwt>` — JWT issued by the Agent Identity service
+    - `X-API-Key: <secret>` — Agent shared secret / API key
+
+    Multi-tenant: every request scoped to a `tenant_id`.
+
+    ### Post-Quantum Cryptography
+    Tokens are signed with ML-DSA-87 (Dilithium). Key exchange uses ML-KEM-1024 (Kyber).
+
+  contact:
+    name: CyberArmor Engineering
+    url: https://cyberarmor.ai
+    email: api@cyberarmor.ai
+
+  license:
+    name: Proprietary
+    url: https://cyberarmor.ai/license
+
+servers:
+  - url: http://localhost:8008
+    description: Agent Identity Service (local dev)
+  - url: http://localhost:8009
+    description: AI Router Service (local dev)
+  - url: http://localhost:8011
+    description: Audit Graph Service (local dev)
+  - url: https://api.cyberarmor.ai
+    description: Production (all services via unified gateway)
+
+# ============================================================================
+# Security schemes
+# ============================================================================
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+# ============================================================================
+# Tags
+# ============================================================================
+tags:
+  - name: agents
+    description: AI agent identity lifecycle — registration, lookup, update, revocation
+  - name: tokens
+    description: JWT token issuance, validation and revocation for AI agents
+  - name: workloads
+    description: SPIFFE/SVID workload attestation for zero-trust identity
+  - name: delegations
+    description: Agent-to-agent permission delegation chains
+  - name: ai-routing
+    description: Unified LLM proxy — send completions to any provider via one endpoint
+  - name: credentials
+    description: Encrypted provider credential vault management
+  - name: policy
+    description: Policy CRUD and evaluation
+  - name: events
+    description: Audit event ingestion and query
+  - name: graph
+    description: Causal action graphs — who called what, when, and why
+  - name: risk
+    description: Risk scoring, timeline, integrity verification
+  - name: control-plane
+    description: Tenant/admin operations, API keys, telemetry, and incident viewer APIs
+  - name: identity
+    description: Identity provider enrichment and token validation
+  - name: runtime
+    description: Runtime decision orchestration endpoint
+  - name: detection
+    description: Content risk and safety scanning
+  - name: compliance
+    description: Compliance framework assessment and evidence APIs
+  - name: siem
+    description: SIEM output configuration and connector APIs
+  - name: health
+    description: Service health and readiness probes
+
+# ============================================================================
+# Paths — Agent Identity Service (port 8008)
+# ============================================================================
+paths:
+
+  # --------------------------------------------------------------------------
+  # Agent registration
+  # --------------------------------------------------------------------------
+  /agents/register:
+    post:
+      tags: [agents]
+      operationId: registerAgent
+      summary: Register a new AI agent
+      description: |
+        Creates a new AI agent identity within a tenant.
+        Returns an `agent_id` and initial configuration.
+        The caller must store the returned `agent_secret` securely — it is
+        shown only once.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRegistrationRequest'
+            examples:
+              standard_agent:
+                summary: Register a standard inference agent
+                value:
+                  tenant_id: tenant-acme
+                  name: product-recommendation-bot
+                  description: Recommends products based on user queries
+                  trust_level: standard
+                  capabilities:
+                    - ai:inference
+                    - ai:embed
+                  max_requests_per_minute: 120
+      responses:
+        '201':
+          description: Agent successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRegistrationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Agent with this name already exists in the tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents:
+    get:
+      tags: [agents]
+      operationId: listAgents
+      summary: List agents for a tenant
+      parameters:
+        - in: query
+          name: tenant_id
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: environment
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Matching agents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents/{agent_id}:
+    parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+
+    get:
+      tags: [agents]
+      operationId: getAgent
+      summary: Get agent details
+      description: Returns the full agent record for the given `agent_id`.
+      responses:
+        '200':
+          description: Agent details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [agents]
+      operationId: updateAgent
+      summary: Update agent metadata or configuration
+      description: |
+        Updates mutable fields of an agent. Only fields present in the
+        request body are modified (partial update / PATCH semantics).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentUpdateRequest'
+      responses:
+        '200':
+          description: Updated agent record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [agents]
+      operationId: revokeAgent
+      summary: Revoke (soft-delete) an agent
+      description: |
+        Sets the agent status to `revoked`. All tokens issued to this agent
+        are immediately invalidated. The audit record is preserved.
+      responses:
+        '200':
+          description: Agent revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # --------------------------------------------------------------------------
+  # Token management
+  # --------------------------------------------------------------------------
+  /agents/{agent_id}/tokens/issue:
+    parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+    post:
+      tags: [tokens]
+      operationId: issueToken
+      summary: Issue a JWT access token for an agent
+      description: |
+        Issues a short-lived JWT signed with ML-DSA-87 (Dilithium).
+        The token encodes the agent's scopes, tenant, and expiry.
+        Use this token as `Authorization: Bearer <token>` on subsequent requests.
+      responses:
+        '200':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents/{agent_id}/rotate:
+    parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+    post:
+      tags: [tokens]
+      operationId: rotateAgentCredentials
+      summary: Rotate agent credentials and issue a new token
+      responses:
+        '200':
+          description: Rotated token response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents/{agent_id}/lineage:
+    parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+    get:
+      tags: [agents, delegations]
+      operationId: getAgentLineage
+      summary: Return active delegation lineage for an agent
+      responses:
+        '200':
+          description: Agent lineage and active chains
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent_id:
+                    type: string
+                  display_name:
+                    type: string
+                  chain:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        chain_id:
+                          type: string
+                        parent_human_id:
+                          type: string
+                        scope:
+                          type: array
+                          items:
+                            type: string
+                        expires_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents/{agent_id}/tokens/validate:
+    parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+    post:
+      tags: [tokens]
+      operationId: validateToken
+      summary: Validate a JWT token
+      description: |
+        Validates the signature, expiry, and revocation status of a JWT.
+        Returns decoded claims on success.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  description: The JWT string to validate
+                required_scopes:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional list of scopes that must be present
+      responses:
+        '200':
+          description: Token validation result (valid or invalid)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenValidationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /agents/{agent_id}/tokens/revoke:
+    parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+    post:
+      tags: [tokens]
+      operationId: revokeToken
+      summary: Revoke a specific token or all tokens for an agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token_id
+              properties:
+                token_id:
+                  type: string
+                  description: Token ID to revoke.
+      responses:
+        '200':
+          description: Token(s) revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # --------------------------------------------------------------------------
+  # Workload attestation (SPIFFE)
+  # --------------------------------------------------------------------------
+  /workloads/attest:
+    post:
+      tags: [workloads]
+      operationId: attestWorkload
+      summary: SPIFFE workload attestation
+      description: |
+        Attests a workload identity using SPIFFE/SVID selectors.
+        On success, issues a short-lived SVID and maps the workload to an
+        existing `agent_id`. Supports node, pod, and process selectors.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkloadAttestationRequest'
+      responses:
+        '200':
+          description: Workload attested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkloadAttestationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Workload attestation failed — selectors did not match any agent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /workloads/{workload_id}:
+    get:
+      tags: [workloads]
+      operationId: getWorkload
+      summary: Get workload attestation status by workload ID
+      parameters:
+        - in: path
+          name: workload_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workload record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workload_id:
+                    type: string
+                  status:
+                    type: string
+                  svid:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # --------------------------------------------------------------------------
+  # Delegation chains
+  # --------------------------------------------------------------------------
+  /delegations:
+    post:
+      tags: [delegations]
+      operationId: createDelegation
+      summary: Create an agent-to-agent delegation chain
+      description: |
+        Allows `delegator_id` to grant a subset of its scopes to `delegate_id`
+        for a bounded time period. The chain depth is capped by `max_depth`
+        to prevent unbounded permission propagation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DelegationCreateRequest'
+            examples:
+              simple_delegation:
+                summary: Delegate inference scope for 24 hours
+                value:
+                  parent_human_id: user-123
+                  agent_id: agt-worker-002
+                  scope:
+                    - ai:inference
+                  expires_at: "2026-12-31T23:59:59Z"
+      responses:
+        '201':
+          description: Delegation chain created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DelegationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Delegator does not hold the requested scopes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [delegations]
+      operationId: listDelegations
+      summary: List delegation chains
+      parameters:
+        - name: parent_human_id
+          in: query
+          schema:
+            type: string
+          description: Filter by parent human identifier
+        - name: agent_id
+          in: query
+          schema:
+            type: string
+          description: Filter by agent identifier
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by delegation status
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of delegation chains
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  delegations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DelegationResponse'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /delegations/{chain_id}:
+    parameters:
+      - name: chain_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Delegation chain ID
+
+    delete:
+      tags: [delegations]
+      operationId: revokeDelegation
+      summary: Revoke a delegation chain
+      description: |
+        Immediately revokes the delegation chain. Any tokens obtained using
+        this delegation are invalidated within the next token-check cycle.
+      responses:
+        '200':
+          description: Delegation chain revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # --------------------------------------------------------------------------
+  # Health / readiness / metrics (Agent Identity Service)
+  # --------------------------------------------------------------------------
+  /health:
+    get:
+      tags: [health]
+      operationId: healthCheck
+      summary: Health check
+      description: Returns service health. No authentication required.
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /ready:
+    get:
+      tags: [health]
+      operationId: readinessCheck
+      summary: Readiness check (Kubernetes probe)
+      description: |
+        Returns 200 only when the service has completed startup and all
+        backing stores (database, Redis) are reachable.
+      security: []
+      responses:
+        '200':
+          description: Service is ready to accept traffic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+        '503':
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
+  /metrics:
+    get:
+      tags: [health]
+      operationId: getMetrics
+      summary: Prometheus metrics
+      description: Exposes Prometheus-format metrics for scraping.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Prometheus metrics text
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Paths — AI Router Service (port 8009)
+  # ============================================================================
+
+  /ai/chat/completions:
+    post:
+      tags: [ai-routing]
+      operationId: chatCompletions
+      summary: Unified AI chat completions
+      description: |
+        Single endpoint for chat completions across all configured LLM providers.
+        The router handles:
+        1. Policy evaluation (pre-call)
+        2. Provider selection and credential injection
+        3. Request forwarding to the upstream provider
+        4. Response validation and PII scrubbing
+        5. Audit event emission (post-call)
+        6. Cost tracking and budget enforcement
+
+        Set `provider` to target a specific provider, or omit for automatic
+        selection based on model name, cost, and availability.
+
+        Streaming is supported via `stream: true` (Server-Sent Events).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+            examples:
+              openai_gpt4o:
+                summary: GPT-4o via OpenAI
+                value:
+                  tenant_id: tenant-acme
+                  provider: openai
+                  model: gpt-4o
+                  messages:
+                    - role: system
+                      content: You are a helpful assistant.
+                    - role: user
+                      content: Summarise the quarterly report.
+                  max_tokens: 1024
+                  temperature: 0.7
+              auto_route:
+                summary: Auto-select cheapest capable model
+                value:
+                  tenant_id: tenant-acme
+                  model: auto
+                  messages:
+                    - role: user
+                      content: What is the capital of France?
+                  metadata:
+                    agent_id: agt-worker-002
+                    trace_id: trace-abc123
+      responses:
+        '200':
+          description: Chat completion response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE stream of partial completion chunks
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Policy denied the request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyDeniedResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          description: Rate limit or budget exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream provider error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ai/completions:
+    post:
+      tags: [ai-routing]
+      operationId: legacyCompletions
+      summary: Legacy non-chat completions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompletionRequest'
+      responses:
+        '200':
+          description: Completion response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '424':
+          description: No credentials configured for selected provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ai/embeddings:
+    post:
+      tags: [ai-routing]
+      operationId: createEmbeddings
+      summary: Generate text embeddings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbeddingsRequest'
+      responses:
+        '200':
+          description: Embeddings response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbeddingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '424':
+          description: No credentials configured for selected provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ai/images/generate:
+    post:
+      tags: [ai-routing]
+      operationId: generateImage
+      summary: Generate images
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImagesGenerateRequest'
+      responses:
+        '200':
+          description: Image generation response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImagesGenerateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '424':
+          description: No credentials configured for selected provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Provider does not support image generation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ai/messages:
+    post:
+      tags: [ai-routing]
+      operationId: anthropicMessages
+      summary: Anthropic-style message endpoint
+      description: Accepts Anthropic-style envelope and returns a normalized chat completion response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Normalized chat response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ai/models:
+    get:
+      tags: [ai-routing]
+      operationId: listModels
+      summary: List all available models across all providers
+      parameters:
+        - name: provider
+          in: query
+          schema:
+            type: string
+          description: Filter by provider name
+        - name: capability
+          in: query
+          schema:
+            type: string
+            enum: [chat, embed, image, audio, vision, code]
+          description: Filter by model capability
+      responses:
+        '200':
+          description: List of available models
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    example: list
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ModelInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ai/providers:
+    get:
+      tags: [ai-routing]
+      operationId: listProviders
+      summary: List configured AI providers and their status
+      responses:
+        '200':
+          description: List of providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # --------------------------------------------------------------------------
+  # Credential vault (AI Router)
+  # --------------------------------------------------------------------------
+  /credentials/providers/{provider}/configure:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/ProviderPath'
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+            default: default
+          description: Tenant scope for credential storage
+      tags: [credentials]
+      operationId: configureProviderCredential
+      summary: Store encrypted provider API credentials
+      description: |
+        Encrypts and stores an API key for the specified provider using
+        ML-KEM-1024 (Kyber) key encapsulation. The plaintext key is never
+        persisted and is not returned after this call.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CredentialConfigureRequest'
+      responses:
+        '200':
+          description: Credential stored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialConfigureResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /credentials/providers/{provider}/status:
+    get:
+      parameters:
+        - $ref: '#/components/parameters/ProviderPath'
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+            default: default
+          description: Tenant scope for lookup (or fallback to default tenant)
+      tags: [credentials]
+      operationId: providerCredentialStatus
+      summary: Get provider credential configuration status
+      responses:
+        '200':
+          description: Provider configuration status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /credentials/providers/{provider}/rotate:
+    post:
+      tags: [credentials]
+      operationId: rotateProviderCredential
+      summary: Rotate a provider API key
+      description: |
+        Atomically replaces the stored API key with a new one.
+        In-flight requests complete using the old key before it is discarded.
+      parameters:
+        - $ref: '#/components/parameters/ProviderPath'
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+            default: default
+          description: Tenant scope for credential update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CredentialConfigureRequest'
+      responses:
+        '200':
+          description: API key rotated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialRotateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /proxy-mode/{tenant_id}:
+    get:
+      tags: [policy]
+      operationId: getPolicyProxyMode
+      summary: Get policy proxy mode for tenant
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Proxy mode for tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyProxyMode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /policies/{tenant_id}:
+    get:
+      tags: [policy]
+      operationId: listPoliciesByTenant
+      summary: List policies for tenant
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: enabled_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Return only enabled policies
+        - name: action
+          in: query
+          schema:
+            type: string
+          description: Optional policy action filter
+        - name: tag
+          in: query
+          schema:
+            type: string
+          description: Optional tag filter
+      responses:
+        '200':
+          description: Policies for tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PolicyOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/{tenant_id}/{name}:
+    get:
+      tags: [policy]
+      operationId: getPolicyByName
+      summary: Get policy by tenant and name
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Policy details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies:
+    post:
+      tags: [policy]
+      operationId: upsertPolicy
+      summary: Create or update a policy by tenant/name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyCreate'
+      responses:
+        '200':
+          description: Policy upsert result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyOut'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/id/{policy_id}:
+    parameters:
+      - name: policy_id
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      tags: [policy]
+      operationId: updatePolicy
+      summary: Update policy by ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyUpdate'
+      responses:
+        '200':
+          description: Updated policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [policy]
+      operationId: deletePolicy
+      summary: Delete policy by ID
+      responses:
+        '200':
+          description: Deletion result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/id/{policy_id}/toggle:
+    patch:
+      tags: [policy]
+      operationId: togglePolicy
+      summary: Toggle policy enabled state
+      parameters:
+        - name: policy_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyToggle'
+      responses:
+        '200':
+          description: Updated policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/bulk-toggle:
+    post:
+      tags: [policy]
+      operationId: bulkTogglePolicies
+      summary: Toggle multiple policies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyBulkToggle'
+      responses:
+        '200':
+          description: Bulk toggle result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  updated:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/{tenant_id}/export:
+    get:
+      tags: [policy]
+      operationId: exportPolicies
+      summary: Export policies for tenant
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export payload
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PolicyExportItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/{policy_id}:
+    put:
+      tags: [policy]
+      operationId: updatePolicyByIdLegacy
+      summary: Update policy by ID (legacy alias)
+      parameters:
+        - name: policy_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyUpdate'
+      responses:
+        '200':
+          description: Updated policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [policy]
+      operationId: deletePolicyByIdLegacy
+      summary: Delete policy by ID (legacy alias)
+      parameters:
+        - name: policy_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Policy deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /policies/{policy_id}/toggle:
+    patch:
+      tags: [policy]
+      operationId: togglePolicyByIdLegacy
+      summary: Toggle policy enabled state (legacy alias)
+      parameters:
+        - name: policy_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyToggle'
+      responses:
+        '200':
+          description: Toggled policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyOut'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /evaluate:
+    post:
+      tags: [policy]
+      operationId: evaluatePolicyLegacy
+      summary: Legacy policy evaluation endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyEvaluateRequest'
+      responses:
+        '200':
+          description: Legacy decision format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyLegacyEvaluationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/evaluate:
+    post:
+      tags: [policy]
+      operationId: evaluatePolicy
+      summary: Evaluate a request against tenant policies
+      description: |
+        Synchronous decision endpoint. Returns one of:
+        ALLOW, DENY, ALLOW_WITH_REDACTION, ALLOW_WITH_LIMITS,
+        REQUIRE_APPROVAL, ALLOW_WITH_AUDIT_ONLY, QUARANTINE.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyEvaluateRequest'
+      responses:
+        '200':
+          description: Policy decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyEvaluationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/{tenant_id}/evaluate:
+    post:
+      tags: [policy]
+      operationId: evaluatePolicyForTenant
+      summary: Evaluate a request against tenant policies (tenant path form)
+      description: Backward-compatible alias used by dashboard policy studio flows.
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tenant identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy_name:
+                  type: string
+                context:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Policy decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyEvaluationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/evaluate/batch:
+    post:
+      tags: [policy]
+      operationId: evaluatePolicyBatch
+      summary: Evaluate multiple requests in one batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyBatchEvaluateRequest'
+      responses:
+        '200':
+          description: Batched policy decisions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyBatchEvaluateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/simulate:
+    get:
+      tags: [policy]
+      operationId: simulatePolicyDecision
+      summary: Simulate a policy decision without persisting anything
+      description: |
+        Convenience GET endpoint that accepts JSON context via `context_json`.
+      parameters:
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Tenant identifier
+        - name: context_json
+          in: query
+          required: false
+          schema:
+            type: string
+          description: JSON-encoded policy evaluation context
+      responses:
+        '200':
+          description: Simulation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyEvaluationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/import:
+    post:
+      tags: [policy]
+      operationId: importPolicy
+      summary: Import OPA Rego or Cedar policy text
+      description: |
+        Normalizes OPA Rego or Cedar source into CyberArmor policy records.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyImportRequest'
+      responses:
+        '200':
+          description: Policy import result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyImportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /policies/explain/{req_id}:
+    parameters:
+      - name: req_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Request identifier returned by policy evaluation
+    get:
+      tags: [policy]
+      operationId: explainPolicyDecision
+      summary: Return cached policy evaluation explanation
+      responses:
+        '200':
+          description: Decision explanation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyExplanationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ============================================================================
+  # Paths — Identity / Runtime / Detection / Compliance / SIEM
+  # ============================================================================
+
+  /providers:
+    get:
+      tags: [identity]
+      operationId: listIdentityProviders
+      summary: List configured identity providers
+      responses:
+        '200':
+          description: Identity providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdentityProviderInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /enrich:
+    post:
+      tags: [identity]
+      operationId: enrichIdentityUser
+      summary: Enrich user context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityEnrichRequest'
+      responses:
+        '200':
+          description: Enriched user record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityUserInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/{identifier}:
+    get:
+      tags: [identity]
+      operationId: getIdentityUser
+      summary: Get user info by identifier
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: provider
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityUserInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{identifier}/groups:
+    get:
+      tags: [identity]
+      operationId: getIdentityUserGroups
+      summary: Get user group memberships
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: provider
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Group list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /validate-token:
+    post:
+      tags: [identity]
+      operationId: validateIdentityToken
+      summary: Validate external identity provider token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityTokenValidateRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityTokenValidateResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /pki/public-key:
+    get:
+      tags: [identity]
+      operationId: getIdentityPkiPublicKey
+      summary: Get identity service PQC public key metadata
+      responses:
+        '200':
+          description: Public key metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /runtime/evaluate:
+    post:
+      tags: [runtime]
+      operationId: evaluateRuntimeDecision
+      summary: Evaluate runtime request across detection/policy/response
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeEvaluateRequest'
+      responses:
+        '200':
+          description: Runtime decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeDecisionResponse'
+        '502':
+          description: Upstream dependency error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /scan:
+    post:
+      tags: [detection]
+      operationId: scanContent
+      summary: Scan content for prompt injection, sensitive data, and unsafe output
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionScanRequest'
+      responses:
+        '200':
+          description: Scan result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionScanResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /scan/prompt-injection:
+    post:
+      tags: [detection]
+      operationId: scanPromptInjection
+      summary: Scan text for prompt-injection patterns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionTextRequest'
+      responses:
+        '200':
+          description: Prompt injection detection results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionSimpleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /scan/sensitive-data:
+    post:
+      tags: [detection]
+      operationId: scanSensitiveData
+      summary: Scan text for sensitive data patterns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionTextRequest'
+      responses:
+        '200':
+          description: Sensitive data detection results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionSimpleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /scan/output-safety:
+    post:
+      tags: [detection]
+      operationId: scanOutputSafety
+      summary: Scan text for dangerous output patterns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionTextRequest'
+      responses:
+        '200':
+          description: Output safety detection results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionSimpleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /scan/all:
+    post:
+      tags: [detection]
+      operationId: scanAllDetectors
+      summary: Run all text-based detection scans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionTextRequest'
+      responses:
+        '200':
+          description: Combined detection results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionSimpleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /frameworks:
+    get:
+      tags: [compliance]
+      operationId: listComplianceFrameworks
+      summary: List supported compliance frameworks
+      responses:
+        '200':
+          description: Frameworks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComplianceFrameworkInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /frameworks/{framework_id}/controls:
+    get:
+      tags: [compliance]
+      operationId: listComplianceControls
+      summary: List controls for a framework
+      parameters:
+        - name: framework_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Framework controls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComplianceControlInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /assess/{tenant_id}:
+    post:
+      tags: [compliance]
+      operationId: runComplianceAssessment
+      summary: Run tenant compliance assessment
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceAssessmentRequest'
+      responses:
+        '200':
+          description: Assessment result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [compliance]
+      operationId: clearComplianceAssessments
+      summary: Clear tenant assessment history
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assessment history cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /assess/{tenant_id}/{request_id}:
+    post:
+      tags: [compliance]
+      operationId: runComplianceAssessmentForRequest
+      summary: Run request-scoped compliance assessment
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceAssessmentRequest'
+      responses:
+        '200':
+          description: Request-scoped assessment result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /assess/{tenant_id}/report:
+    get:
+      tags: [compliance]
+      operationId: getComplianceReport
+      summary: Get latest compliance report for tenant
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: framework
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Compliance report
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /assess/{tenant_id}/{request_id}/report:
+    get:
+      tags: [compliance]
+      operationId: getComplianceReportForRequest
+      summary: Get request-scoped compliance report
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request-scoped report
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /evidence/{tenant_id}:
+    post:
+      tags: [compliance]
+      operationId: submitComplianceEvidence
+      summary: Submit tenant compliance evidence
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceEvidenceSubmission'
+      responses:
+        '200':
+          description: Evidence stored
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags: [compliance]
+      operationId: getComplianceEvidence
+      summary: Get tenant compliance evidence
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Evidence payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /evidence/{tenant_id}/{request_id}:
+    post:
+      tags: [compliance]
+      operationId: submitComplianceEvidenceForRequest
+      summary: Submit request-scoped compliance evidence
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplianceEvidenceSubmission'
+      responses:
+        '200':
+          description: Request-scoped evidence stored
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags: [compliance]
+      operationId: getComplianceEvidenceForRequest
+      summary: Get request-scoped compliance evidence
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request-scoped evidence payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ingest:
+    post:
+      tags: [siem]
+      operationId: ingestSiemCompatibilityEvents
+      summary: Ingest compatibility telemetry events for SIEM routing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Events accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiemIngestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /siem/events:
+    post:
+      tags: [siem]
+      operationId: ingestSiemEvents
+      summary: Ingest SIEM security events (single or array)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/SiemSecurityEvent'
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/SiemSecurityEvent'
+      responses:
+        '200':
+          description: Events accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiemIngestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /siem/events/batch:
+    post:
+      tags: [siem]
+      operationId: ingestSiemEventsBatch
+      summary: Ingest SIEM security events batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiemEventBatchRequest'
+      responses:
+        '200':
+          description: Events accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiemIngestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /outputs:
+    get:
+      tags: [siem]
+      operationId: listSiemOutputs
+      summary: List configured SIEM outputs
+      parameters:
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Output list and available types
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiemOutputsListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /outputs/configure:
+    post:
+      tags: [siem]
+      operationId: configureSiemOutput
+      summary: Configure SIEM output destination
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiemOutputConfigRequest'
+      responses:
+        '200':
+          description: Output configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiemOutputConfigResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /events/test:
+    post:
+      tags: [siem]
+      operationId: testSiemOutput
+      summary: Send SIEM connector test event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiemTestEventRequest'
+      responses:
+        '200':
+          description: Test event results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiemTestEventResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # Paths — Control Plane Service
+  # ============================================================================
+
+  /tenants:
+    get:
+      tags: [control-plane]
+      operationId: listTenants
+      summary: List accessible tenants
+      responses:
+        '200':
+          description: Tenant list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CpTenant'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [control-plane]
+      operationId: createTenant
+      summary: Create tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CpTenantCreate'
+      responses:
+        '200':
+          description: Created tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CpTenant'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Tenant already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /apikeys:
+    get:
+      tags: [control-plane]
+      operationId: listApiKeys
+      summary: List API keys
+      responses:
+        '200':
+          description: API key list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CpApiKey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [control-plane]
+      operationId: createApiKey
+      summary: Create API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CpApiKeyCreate'
+      responses:
+        '200':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CpApiKey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /apikeys/{key}/disable:
+    patch:
+      tags: [control-plane]
+      operationId: disableApiKey
+      summary: Disable API key
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Disabled API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CpApiKey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /telemetry/ingest:
+    post:
+      tags: [control-plane]
+      operationId: ingestTelemetry
+      summary: Ingest telemetry event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CpTelemetryEvent'
+      responses:
+        '202':
+          description: Telemetry accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CpStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    options:
+      tags: [control-plane]
+      operationId: telemetryIngestOptions
+      summary: CORS preflight for telemetry ingestion
+      security: []
+      responses:
+        '200':
+          description: Preflight response
+
+  /incidents/ingest:
+    post:
+      tags: [control-plane]
+      operationId: ingestIncident
+      summary: Ingest request-scoped incident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CpIncidentIngest'
+      responses:
+        '200':
+          description: Incident stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CpStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /incidents/{tenant_id}/{request_id}:
+    get:
+      tags: [control-plane]
+      operationId: getIncident
+      summary: Get incident by tenant and request ID
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Incident payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CpIncidentIngest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /viewer/{tenant_id}/{request_id}:
+    get:
+      tags: [control-plane]
+      operationId: incidentViewer
+      summary: HTML incident viewer
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: HTML incident viewer page
+          content:
+            text/html:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /authz/check:
+    get:
+      tags: [control-plane]
+      operationId: authzCheck
+      summary: Return resolved auth context
+      responses:
+        '200':
+          description: Authorization context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CpAuthzCheckResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /ext_authz/check:
+    post:
+      tags: [policy]
+      operationId: extAuthzCheck
+      summary: Envoy external authz compatibility endpoint
+      responses:
+        '200':
+          description: Request authorized
+        '403':
+          description: Request denied by policy
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /respond:
+    post:
+      tags: [control-plane]
+      operationId: queueResponseActions
+      summary: Queue response actions for a detected incident
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenant_id
+                - source
+                - severity
+                - description
+              properties:
+                tenant_id:
+                  type: string
+                source:
+                  type: string
+                severity:
+                  type: string
+                description:
+                  type: string
+                actions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      kind:
+                        type: string
+                      target:
+                        type: string
+                      message:
+                        type: string
+      responses:
+        '200':
+          description: Response actions queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+
+  /audit:
+    get:
+      tags: [control-plane]
+      operationId: listAuditLogs
+      summary: List control-plane API call audit logs
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 500
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+        - name: before
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CpAuditLog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ============================================================================
+  # Paths — Audit Graph Service (port 8011)
+  # ============================================================================
+
+  /events:
+    post:
+      tags: [events]
+      operationId: emitEvent
+      summary: Emit a single audit event
+      description: |
+        Emits one audit event to the immutable audit log.
+        The service computes and stores an HMAC-SHA256 signature over the
+        event payload for tamper-detection.
+        `event_id` is auto-generated (UUIDv4) if not provided.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuditEventIngest'
+      responses:
+        '201':
+          description: Event stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventIngestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [events]
+      operationId: queryEvents
+      summary: Query audit events
+      description: |
+        Returns audit events matching the supplied filters.
+        Results are ordered by `timestamp` descending.
+      parameters:
+        - name: agent_id
+          in: query
+          schema:
+            type: string
+          description: Filter by agent ID
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+          description: Filter by tenant ID
+        - name: provider
+          in: query
+          schema:
+            type: string
+          description: Filter by provider
+        - name: event_type
+          in: query
+          schema:
+            type: string
+          description: Filter by event type
+        - name: outcome
+          in: query
+          schema:
+            type: string
+          description: Filter by outcome
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Start timestamp (inclusive)
+        - name: until
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: End timestamp (inclusive)
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: List of matching audit events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventsQueryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /events/{event_id}:
+    get:
+      tags: [events]
+      operationId: getEvent
+      summary: Get a single audit event by ID
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audit event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEvent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /events/batch:
+    post:
+      tags: [events]
+      operationId: emitEventBatch
+      summary: Batch emit audit events
+      description: |
+        Emits up to 1000 audit events in a single request.
+        Each event is processed independently. Partial failures are reported
+        in the response; successfully stored events are not retried.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuditBatchIngestRequest'
+      responses:
+        '202':
+          description: Batch stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditBatchIngestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /traces/{trace_id}:
+    parameters:
+      - name: trace_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Distributed trace ID
+    get:
+      tags: [events]
+      operationId: getTrace
+      summary: Get all events belonging to a trace
+      description: |
+        Returns all audit events that share the given `trace_id`, ordered
+        by `timestamp` ascending to reconstruct the request flow.
+      responses:
+        '200':
+          description: Events for this trace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditTraceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # --------------------------------------------------------------------------
+  # Action graphs
+  # --------------------------------------------------------------------------
+  /graph/agent/{agent_id}:
+    parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+    get:
+      tags: [graph]
+      operationId: getAgentGraph
+      summary: Get causal action graph for an agent
+      description: |
+        Returns a directed acyclic graph (DAG) of all actions performed by
+        `agent_id`, including edges representing causal relationships
+        (which action spawned which downstream call).
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+            minimum: 1
+            maximum: 720
+          description: Time window in hours
+      responses:
+        '200':
+          description: Action graph for the agent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditActionGraphResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /graph/human/{human_id}:
+    parameters:
+      - name: human_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Human user identifier (SSO subject / email)
+    get:
+      tags: [graph]
+      operationId: getHumanGraph
+      summary: Get action graph for a human user
+      description: |
+        Returns all AI actions attributable to the given human user across
+        all agents they have spawned or controlled.
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+            minimum: 1
+            maximum: 720
+      responses:
+        '200':
+          description: Action graph for the human user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditActionGraphResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # --------------------------------------------------------------------------
+  # Timeline and export
+  # --------------------------------------------------------------------------
+  /timeline:
+    get:
+      tags: [risk]
+      operationId: getTimeline
+      summary: Get event timeline with risk aggregation
+      description: |
+        Returns time-bucketed event counts and risk scores for dashboard
+        visualisation. Useful for spotting anomalous activity spikes.
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+            minimum: 1
+            maximum: 720
+          description: Time window in hours
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+      responses:
+        '200':
+          description: Timeline data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditTimelineResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /export:
+    post:
+      tags: [events]
+      operationId: exportEvents
+      summary: Export audit events as CSV or JSON
+      description: |
+        Returns an export job descriptor for filtered events.
+      parameters:
+        - name: fmt
+          in: query
+          schema:
+            type: string
+            default: json
+          description: Export format hint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '200':
+          description: Export job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditExportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # --------------------------------------------------------------------------
+  # Integrity verification
+  # --------------------------------------------------------------------------
+  /integrity/verify/{event_id}:
+    parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Audit event ID to verify
+    get:
+      tags: [risk]
+      operationId: verifyEventIntegrity
+      summary: Verify HMAC-SHA256 signature of an audit event
+      description: |
+        Recomputes the HMAC-SHA256 over the stored event fields and compares
+        against the stored `hmac_signature`. Use this to prove the event has
+        not been tampered with since initial ingestion.
+      responses:
+        '200':
+          description: Integrity check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditIntegrityVerificationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+# ============================================================================
+# Components
+# ============================================================================
+components:
+
+  # --------------------------------------------------------------------------
+  # Security schemes
+  # --------------------------------------------------------------------------
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT issued by the Agent Identity service (/agents/{id}/tokens/issue)
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Agent shared secret configured at registration time
+
+  # --------------------------------------------------------------------------
+  # Reusable parameters
+  # --------------------------------------------------------------------------
+  parameters:
+    AgentIdPath:
+      name: agent_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: "Unique agent identifier (format: agt-<uuid>)"
+
+    ProviderPath:
+      name: provider
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [openai, anthropic, google, microsoft, amazon, xai, meta, perplexity]
+      description: AI provider name
+
+    TenantIdQuery:
+      name: tenant_id
+      in: query
+      schema:
+        type: string
+      description: Tenant identifier (required for multi-tenant deployments)
+
+    LimitQuery:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 1000
+      description: Maximum number of results to return
+
+    OffsetQuery:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+      description: Pagination offset
+
+  # --------------------------------------------------------------------------
+  # Reusable responses
+  # --------------------------------------------------------------------------
+  responses:
+    BadRequest:
+      description: Bad request — validation error in the request body or params
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Missing or invalid authentication credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: unauthorized
+            message: Missing or invalid Bearer token or X-API-Key header
+            status: 401
+
+    Forbidden:
+      description: Authenticated but not authorised to perform this action
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    UnprocessableEntity:
+      description: Request body is well-formed but semantically invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  # --------------------------------------------------------------------------
+  # Schemas
+  # --------------------------------------------------------------------------
+  schemas:
+
+    # ---- Agent ---------------------------------------------------------------
+
+    AgentRegistrationRequest:
+      type: object
+      required: [tenant_id, name]
+      properties:
+        tenant_id:
+          type: string
+          description: Tenant that owns this agent
+          example: tenant-acme
+        name:
+          type: string
+          description: Human-readable agent name (unique within tenant)
+          minLength: 1
+          maxLength: 128
+          example: product-recommendation-bot
+        description:
+          type: string
+          maxLength: 1024
+          description: Optional description of the agent's purpose
+        trust_level:
+          type: string
+          enum: [restricted, standard, privileged]
+          default: standard
+          description: |
+            Trust tier:
+            - `restricted` — minimal scopes, requires MFA for sensitive ops
+            - `standard`   — default for most service agents
+            - `privileged` — can access sensitive data and perform admin ops
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Declared capability tags (e.g. ai:inference, ai:embed)
+          example: [ai:inference, ai:audit]
+        max_requests_per_minute:
+          type: integer
+          default: 60
+          minimum: 1
+          maximum: 10000
+          description: Per-agent rate limit (requests per minute)
+        allowed_models:
+          type: array
+          items:
+            type: string
+          description: Allowlist of model IDs this agent may access (empty = all allowed)
+        allowed_providers:
+          type: array
+          items:
+            type: string
+          description: Allowlist of providers this agent may use (empty = all allowed)
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Arbitrary key-value metadata
+
+    AgentRegistrationResponse:
+      type: object
+      properties:
+        agent_id:
+          type: string
+          description: Unique identifier assigned to the agent
+          example: agt-a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        tenant_id:
+          type: string
+        name:
+          type: string
+        agent_secret:
+          type: string
+          description: |
+            Shared secret for API key authentication.
+            SHOWN ONCE — store securely, cannot be retrieved again.
+          format: password
+        trust_level:
+          type: string
+          enum: [restricted, standard, privileged]
+        capabilities:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, suspended, revoked]
+        created_at:
+          type: string
+          format: date-time
+
+    AgentResponse:
+      type: object
+      properties:
+        agent_id:
+          type: string
+          example: agt-a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        tenant_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        trust_level:
+          type: string
+          enum: [restricted, standard, privileged]
+        capabilities:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, suspended, revoked]
+        max_requests_per_minute:
+          type: integer
+        allowed_models:
+          type: array
+          items:
+            type: string
+        allowed_providers:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AgentUpdateRequest:
+      type: object
+      description: Partial update — only provided fields are changed
+      properties:
+        name:
+          type: string
+          maxLength: 128
+        description:
+          type: string
+          maxLength: 1024
+        trust_level:
+          type: string
+          enum: [restricted, standard, privileged]
+        capabilities:
+          type: array
+          items:
+            type: string
+        max_requests_per_minute:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        allowed_models:
+          type: array
+          items:
+            type: string
+        allowed_providers:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, suspended]
+        metadata:
+          type: object
+          additionalProperties: true
+
+    # ---- Tokens --------------------------------------------------------------
+
+    TokenIssueRequest:
+      type: object
+      required: [tenant_id]
+      properties:
+        tenant_id:
+          type: string
+          description: Tenant context for this token
+        scopes:
+          type: array
+          items:
+            type: string
+          default: [ai:inference]
+          description: |
+            OAuth2-style scopes to embed in the token.
+            Valid scopes include:
+            - `ai:inference` — call LLM completion endpoints
+            - `ai:embed`     — call embedding endpoints
+            - `ai:image`     — call image generation endpoints
+            - `ai:audit`     — emit audit events
+            - `ai:admin`     — privileged admin operations
+          example: [ai:inference, ai:audit]
+        expires_in:
+          type: integer
+          default: 3600
+          minimum: 60
+          maximum: 86400
+          description: Token lifetime in seconds (max 24h)
+        agent_claims:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional key-value claims to embed in the JWT payload
+
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Signed JWT access token (legacy field)
+        access_token:
+          type: string
+          description: Signed JWT (ML-DSA-87 / Dilithium)
+        agent_id:
+          type: string
+          description: Agent identifier the token belongs to
+        expires_at:
+          type: string
+          format: date-time
+          description: Absolute expiry time (UTC)
+        ttl_seconds:
+          type: integer
+          description: Token validity in seconds
+        expires_in:
+          type: integer
+          description: Compatibility alias for token lifetime in seconds
+        scopes:
+          type: array
+          items: 
+            type: string
+        token_id:
+          type: string
+          description: Unique token JTI (can be used to revoke this specific token)
+
+    TokenValidationResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+        claims:
+          type: object
+          additionalProperties: true
+
+    # ---- Workload attestation ------------------------------------------------
+
+    WorkloadAttestationRequest:
+      type: object
+      required: [agent_id]
+      properties:
+        agent_id:
+          type: string
+        namespace:
+          type: string
+          description: Workload namespace (defaults to `default`)
+        service_account:
+          type: string
+          description: Service account (defaults to `default`)
+
+    WorkloadAttestationResponse:
+      type: object
+      properties:
+        workload_id:
+          type: string
+        agent_id:
+          type: string
+        svid:
+          type: string
+          description: SPIFFE URI for the attested workload
+        namespace:
+          type: string
+        service_account:
+          type: string
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    # ---- Delegations ---------------------------------------------------------
+
+    DelegationCreateRequest:
+      type: object
+      required: [parent_human_id, agent_id]
+      properties:
+        parent_human_id:
+          type: string
+          description: Parent human identifier
+        agent_id:
+          type: string
+          description: Agent receiving delegation
+          example: agt-worker-002
+        scope:
+          type: array
+          items:
+            type: string
+          description: Delegated scope
+          default: ['*']
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    DelegationResponse:
+      type: object
+      properties:
+        chain_id:
+          type: string
+          description: Unique delegation chain identifier
+          example: del-chain-abc123
+        parent_human_id:
+          type: string
+        agent_id:
+          type: string
+        scope:
+          type: array
+          items:
+            type: string
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # ---- AI Router -----------------------------------------------------------
+
+    ChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant, tool]
+        content:
+          type: string
+          description: Message text content
+        name:
+          type: string
+          description: Optional name for multi-agent scenarios
+        tool_call_id:
+          type: string
+          description: Tool call ID (for role=tool messages)
+
+    ChatCompletionRequest:
+      type: object
+      required: [messages]
+      properties:
+        tenant_id:
+          type: string
+          description: Tenant context (required for multi-tenant deployments)
+        provider:
+          type: string
+          enum: [auto, openai, anthropic, google, amazon, microsoft, xai, meta, perplexity]
+          description: Target provider. Use `auto` for cost-optimised routing.
+        model:
+          type: string
+          description: Model identifier (e.g. "gpt-4o", "claude-3-5-sonnet-20241022")
+          example: gpt-4o
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+          minItems: 1
+        max_tokens:
+          type: integer
+          minimum: 1
+          maximum: 128000
+          default: 1024
+        temperature:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 2.0
+          default: 1.0
+        stream:
+          type: boolean
+          default: false
+          description: Enable SSE streaming of completion tokens
+        system:
+          type: string
+          description: System prompt (alternative to messages[0].role=system)
+        agent_id:
+          type: string
+          nullable: true
+          description: Optional agent identifier for audit context
+        trace_id:
+          type: string
+          nullable: true
+          description: Optional trace ID for correlation
+        tools:
+          type: array
+          items:
+            type: object
+          nullable: true
+
+    ChatChoice:
+      type: object
+      properties:
+        index:
+          type: integer
+        message:
+          $ref: '#/components/schemas/ChatMessage'
+        finish_reason:
+          type: string
+          enum: [stop, length, content_filter, tool_calls]
+        logprobs:
+          nullable: true
+          type: object
+
+    UsageStats:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+
+    CompletionRequest:
+      type: object
+      required: [model, prompt]
+      properties:
+        model:
+          type: string
+          description: Model identifier (e.g. gpt-4o-mini)
+        prompt:
+          type: string
+          description: Text prompt for completion
+        provider:
+          type: string
+          description: Optional explicit provider override
+        max_tokens:
+          type: integer
+          minimum: 1
+        temperature:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 2
+        tenant_id:
+          type: string
+          description: Tenant context
+        agent_id:
+          type: string
+          nullable: true
+        trace_id:
+          type: string
+          nullable: true
+
+    CompletionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+        usage:
+          $ref: '#/components/schemas/UsageStats'
+        cost_usd:
+          type: number
+          format: float
+        latency_ms:
+          type: integer
+        trace_id:
+          type: string
+          nullable: true
+
+    EmbeddingsRequest:
+      type: object
+      required: [model, input]
+      properties:
+        model:
+          type: string
+        input:
+          type: string
+          description: Input text to embed
+        provider:
+          type: string
+        tenant_id:
+          type: string
+        agent_id:
+          type: string
+        trace_id:
+          type: string
+
+    EmbeddingsResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        object:
+          type: string
+        model:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              object:
+                type: string
+              index:
+                type: integer
+              embedding:
+                type: array
+                items:
+                  type: number
+        usage:
+          $ref: '#/components/schemas/UsageStats'
+
+    ImagesGenerateRequest:
+      type: object
+      required: [model, prompt]
+      properties:
+        model:
+          type: string
+        prompt:
+          type: string
+        size:
+          type: string
+          default: 1024x1024
+        n:
+          type: integer
+          default: 1
+        provider:
+          type: string
+        tenant_id:
+          type: string
+        agent_id:
+          type: string
+        trace_id:
+          type: string
+
+    ImagesGenerateResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        created:
+          type: integer
+          format: int64
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              b64_json:
+                type: string
+              revised_prompt:
+                type: string
+              content:
+                type: string
+
+    ChatCompletionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique completion ID
+        model:
+          type: string
+          description: Model that produced the response
+        provider:
+          type: string
+          description: Provider that served the request
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatChoice'
+        usage:
+          $ref: '#/components/schemas/UsageStats'
+        cost_usd:
+          type: number
+          format: float
+          description: Estimated cost in USD for this completion
+        latency_ms:
+          type: integer
+          description: Total round-trip latency in milliseconds
+        trace_id:
+          type: string
+          nullable: true
+
+    PolicyDecision:
+      type: object
+      properties:
+        decision_type:
+          type: string
+          enum:
+            - ALLOW
+            - DENY
+            - ALLOW_WITH_REDACTION
+            - ALLOW_WITH_LIMITS
+            - REQUIRE_APPROVAL
+            - ALLOW_WITH_AUDIT_ONLY
+            - QUARANTINE
+          description: Policy decision type
+        allowed:
+          type: boolean
+        reason:
+          type: string
+          description: Human-readable reason for the decision
+        redaction_targets:
+          type: array
+          items:
+            type: string
+          description: Redaction targets applied when decision is ALLOW_WITH_REDACTION
+        limits:
+          type: object
+          additionalProperties: true
+          description: Limits applied when decision is ALLOW_WITH_LIMITS
+        redacted_prompt:
+          type: string
+          description: Prompt after PII / secret redaction (empty if no redaction occurred)
+        risk_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Risk score computed by the policy engine
+        latency_ms:
+          type: integer
+          description: Policy evaluation latency
+        policy_id:
+          type: string
+          description: ID of the matched policy rule
+
+    PolicyProxyMode:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+        mode:
+          type: string
+        source:
+          type: string
+
+    PolicyOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        tenant_id:
+          type: string
+        version:
+          type: string
+        enabled:
+          type: boolean
+        action:
+          type: string
+        priority:
+          type: integer
+        conditions:
+          type: object
+          additionalProperties: true
+          nullable: true
+        rules:
+          type: object
+          additionalProperties: true
+        compliance_frameworks:
+          type: array
+          items:
+            type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          type: string
+          nullable: true
+
+    PolicyCreate:
+      type: object
+      required: [name, tenant_id]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        tenant_id:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        action:
+          type: string
+          default: monitor
+        priority:
+          type: integer
+          default: 100
+        conditions:
+          type: object
+          additionalProperties: true
+          nullable: true
+        rules:
+          type: object
+          additionalProperties: true
+          description: Policy rule expression (required in create/update payloads)
+        compliance_frameworks:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    PolicyUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+        action:
+          type: string
+        priority:
+          type: integer
+        conditions:
+          type: object
+          additionalProperties: true
+        rules:
+          type: object
+          additionalProperties: true
+        compliance_frameworks:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    PolicyToggle:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+
+    PolicyBulkToggle:
+      type: object
+      required: [policy_ids, enabled]
+      properties:
+        policy_ids:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+
+    PolicyExportItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        enabled:
+          type: boolean
+        action:
+          type: string
+        priority:
+          type: integer
+        conditions:
+          type: object
+          additionalProperties: true
+        rules:
+          type: object
+          additionalProperties: true
+        compliance_frameworks:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        version:
+          type: string
+
+    PolicyLegacyEvaluationResponse:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [allow, block, warn]
+        reason:
+          type: string
+        policy_id:
+          type: string
+          nullable: true
+        policy_name:
+          type: string
+          nullable: true
+        matched_rules:
+          type: array
+          items:
+            type: string
+        compliance_frameworks:
+          type: array
+          items:
+            type: string
+        decision:
+          type: string
+        req_id:
+          type: string
+        risk_score:
+          type: number
+          format: float
+
+    PolicyEvaluateRequest:
+      type: object
+      required: [tenant_id, context]
+      properties:
+        tenant_id:
+          type: string
+          description: Tenant identifier
+        context:
+          type: object
+          additionalProperties: true
+          description: Policy evaluation context payload
+
+    PolicyEvaluationResponse:
+      type: object
+      required: [req_id, decision]
+      properties:
+        simulation:
+          type: boolean
+          description: Present and true for `/policies/simulate` responses
+        req_id:
+          type: string
+        decision:
+          type: string
+          enum:
+            - ALLOW
+            - DENY
+            - ALLOW_WITH_REDACTION
+            - ALLOW_WITH_LIMITS
+            - REQUIRE_APPROVAL
+            - ALLOW_WITH_AUDIT_ONLY
+            - QUARANTINE
+        reason:
+          type: string
+        policy_id:
+          type: string
+          nullable: true
+        policy_name:
+          type: string
+          nullable: true
+        modifiers:
+          type: object
+          additionalProperties: true
+          nullable: true
+        risk_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        latency_ms:
+          type: number
+          format: float
+
+    PolicyBatchEvaluateRequest:
+      type: object
+      required: [tenant_id, requests]
+      properties:
+        tenant_id:
+          type: string
+        requests:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: true
+
+    PolicyBatchEvaluateResponse:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+        count:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyEvaluationResponse'
+
+    PolicyImportRequest:
+      type: object
+      required: [tenant_id, policy_name, source]
+      properties:
+        tenant_id:
+          type: string
+        policy_name:
+          type: string
+        source:
+          type: string
+          description: Policy source text in Rego or Cedar
+        format:
+          type: string
+          enum: [rego, cedar]
+        enabled:
+          type: boolean
+          default: true
+        priority:
+          type: integer
+          default: 100
+
+    PolicyImportResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        format:
+          type: string
+        policy_id:
+          type: string
+        policy_name:
+          type: string
+
+    PolicyExplanationResponse:
+      type: object
+      properties:
+        req_id:
+          type: string
+        tenant_id:
+          type: string
+        decision:
+          $ref: '#/components/schemas/PolicyEvaluationResponse'
+        matched_policy:
+          type: object
+          additionalProperties: true
+        context:
+          type: object
+          additionalProperties: true
+        evaluated_at:
+          type: string
+          format: date-time
+
+    PolicyDeniedResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          enum: [policy_denied]
+        message:
+          type: string
+        decision:
+          $ref: '#/components/schemas/PolicyDecision'
+        status:
+          type: integer
+          enum: [403]
+
+    ModelInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: gpt-4o
+        provider:
+          type: string
+          example: openai
+        display_name:
+          type: string
+        object:
+          type: string
+          example: model
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum: [chat, embed, image, audio, vision, code, function_calling]
+        max_tokens:
+          type: integer
+          nullable: true
+        input_cost_per_1k:
+          type: number
+          format: float
+          nullable: true
+        output_cost_per_1k:
+          type: number
+          format: float
+          nullable: true
+        available:
+          type: boolean
+          default: true
+
+    ProviderInfo:
+      type: object
+      properties:
+        provider_id:
+          type: string
+        display_name:
+          type: string
+        status:
+          type: string
+          enum: [configured, unconfigured]
+        latency_ms:
+          type: integer
+        models:
+          type: array
+          items:
+            type: string
+        configured:
+          type: boolean
+
+    # ---- Credentials ---------------------------------------------------------
+
+    CredentialConfigureRequest:
+      type: object
+      required: [api_key]
+      properties:
+        api_key:
+          type: string
+          format: password
+          description: Provider API key (encrypted at rest using ML-KEM-1024)
+        base_url:
+          type: string
+          description: Override provider base URL
+        region:
+          type: string
+          description: Optional region hint for provider APIs
+        org_id:
+          type: string
+          description: Provider organization identifier
+        deployment_name:
+          type: string
+          description: Provider deployment/instance name
+
+    CredentialConfigureResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        tenant_id:
+          type: string
+        status:
+          type: string
+          enum: [configured]
+        message:
+          type: string
+          description: Human-readable status note
+
+    CredentialRotateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [rotated]
+        provider:
+          type: string
+
+    CredentialStatusResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        configured:
+          type: boolean
+        status:
+          type: string
+          enum: [configured, unconfigured]
+        base_url:
+          type: string
+
+    # ---- Audit events --------------------------------------------------------
+
+    AuditEventIngest:
+      type: object
+      required: [trace_id, tenant_id, agent_id, event_type]
+      properties:
+        event_id:
+          type: string
+          description: Client-provided event ID (auto-generated if omitted)
+        trace_id:
+          type: string
+        span_id:
+          type: string
+          description: Span ID within the trace (auto-generated if omitted)
+        parent_span_id:
+          type: string
+          nullable: true
+        tenant_id:
+          type: string
+        agent_id:
+          type: string
+        agent_token_id:
+          type: string
+          nullable: true
+        human_initiator_id:
+          type: string
+          nullable: true
+        delegation_chain:
+          type: array
+          items:
+            type: string
+        event_type:
+          type: string
+          description: Event category
+        action:
+          type: object
+          additionalProperties: true
+          nullable: true
+        policy_decision:
+          type: object
+          additionalProperties: true
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        provider:
+          type: string
+          nullable: true
+        framework:
+          type: string
+          nullable: true
+        data_classification:
+          type: array
+          items:
+            type: string
+        outcome:
+          type: string
+          default: success
+        latency_ms:
+          type: integer
+          default: 0
+        cost_usd:
+          type: number
+          format: float
+          default: 0
+        signature:
+          type: string
+          nullable: true
+        prev_event_id:
+          type: string
+          nullable: true
+        prev_signature:
+          type: string
+          nullable: true
+        chain_hash:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          description: Event time (UTC)
+
+    AuditEvent:
+      $ref: '#/components/schemas/AuditEventIngest'
+
+    AuditEventIngestResponse:
+      type: object
+      properties:
+        event_id:
+          type: string
+        stored:
+          type: boolean
+        append_only:
+          type: boolean
+
+    AuditBatchIngestRequest:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/AuditEventIngest'
+
+    AuditBatchIngestResponse:
+      type: object
+      properties:
+        stored:
+          type: integer
+        total:
+          type: integer
+          description: Total events received
+
+    AuditEventsQueryResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+
+    AuditTraceResponse:
+      type: object
+      properties:
+        trace_id:
+          type: string
+        span_count:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+
+    # ---- Graphs --------------------------------------------------------------
+
+    GraphNode:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Node identifier (event_id or agent_id)
+        type:
+          type: string
+          enum: [event, agent, human, model]
+        action:
+          type: string
+        model:
+          type: string
+          nullable: true
+        provider:
+          type: string
+          nullable: true
+        risk_score:
+          type: number
+          format: float
+        blocked:
+          type: boolean
+        timestamp:
+          type: string
+          format: date-time
+
+    GraphEdge:
+      type: object
+      properties:
+        from:
+          type: string
+          description: Source node ID
+        to:
+          type: string
+          description: Target node ID
+        label:
+          type: string
+          description: Edge label (e.g. "caused", "delegated_to", "spawned")
+        weight:
+          type: number
+          format: float
+          description: Edge weight (e.g. frequency or latency)
+
+    ActionGraph:
+      type: object
+      properties:
+        agent_id:
+          type: string
+          nullable: true
+        human_id:
+          type: string
+          nullable: true
+        tenant_id:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+        total_events:
+          type: integer
+        blocked_events:
+          type: integer
+        avg_risk_score:
+          type: number
+          format: float
+        generated_at:
+          type: string
+          format: date-time
+
+    # ---- Timeline ------------------------------------------------------------
+
+    TimelineBucket:
+      type: object
+      properties:
+        bucket_start:
+          type: string
+          format: date-time
+        event_count:
+          type: integer
+        blocked_count:
+          type: integer
+        avg_risk_score:
+          type: number
+          format: float
+        max_risk_score:
+          type: number
+          format: float
+        total_tokens:
+          type: integer
+        estimated_cost_usd:
+          type: number
+          format: float
+
+    TimelineResponse:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+        agent_id:
+          type: string
+          nullable: true
+        bucket:
+          type: string
+          enum: [minute, hour, day]
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        buckets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineBucket'
+        total_events:
+          type: integer
+        total_blocked:
+          type: integer
+
+    # ---- Integrity -----------------------------------------------------------
+
+    IntegrityVerificationResponse:
+      type: object
+      properties:
+        event_id:
+          type: string
+        valid:
+          type: boolean
+          description: true if the stored HMAC matches the recomputed value
+        stored_signature:
+          type: string
+          description: HMAC stored at ingestion time
+        computed_signature:
+          type: string
+          description: HMAC recomputed now over stored fields
+        verified_at:
+          type: string
+          format: date-time
+        tampered:
+          type: boolean
+          description: true if the event appears to have been modified after ingestion
+
+    # ---- Export --------------------------------------------------------------
+
+    ExportRequest:
+      type: object
+      properties:
+        agent_id:
+          type: string
+          nullable: true
+        tenant_id:
+          type: string
+          nullable: true
+        provider:
+          type: string
+          nullable: true
+        event_type:
+          type: string
+          nullable: true
+        outcome:
+          type: string
+          nullable: true
+        since:
+          type: string
+          format: date-time
+        until:
+          type: string
+          format: date-time
+        limit:
+          type: integer
+          default: 100
+          minimum: 1
+          maximum: 1000
+        offset:
+          type: integer
+          default: 0
+
+    AuditActionGraphNode:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        label:
+          type: string
+
+    AuditActionGraphEdge:
+      type: object
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        action:
+          type: string
+        count:
+          type: integer
+        timestamp:
+          type: string
+
+    AuditActionGraphResponse:
+      type: object
+      properties:
+        root_id:
+          type: string
+        root_type:
+          type: string
+          enum: [agent, human]
+        event_count:
+          type: integer
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditActionGraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditActionGraphEdge'
+
+    AuditTimelineEvent:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        event_id:
+          type: string
+        agent_id:
+          type: string
+        description:
+          type: string
+        outcome:
+          type: string
+        provider:
+          type: string
+          nullable: true
+        cost_usd:
+          type: number
+          format: float
+        latency_ms:
+          type: integer
+
+    AuditTimelineResponse:
+      type: object
+      properties:
+        hours:
+          type: integer
+        count:
+          type: integer
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditTimelineEvent'
+
+    AuditExportResponse:
+      type: object
+      properties:
+        export_id:
+          type: string
+        format:
+          type: string
+        events_count:
+          type: integer
+        status:
+          type: string
+        download_url:
+          type: string
+
+    AuditIntegrityVerificationResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        event_id:
+          type: string
+        algorithm:
+          type: string
+        verified_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        chain_valid:
+          type: boolean
+        chain_reason:
+          type: string
+          nullable: true
+
+    CpStatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        tenant_id:
+          type: string
+          nullable: true
+        request_id:
+          type: string
+          nullable: true
+
+    CpTenant:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        active:
+          type: boolean
+
+    CpTenantCreate:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    CpApiKey:
+      type: object
+      properties:
+        key:
+          type: string
+        tenant_id:
+          type: string
+          nullable: true
+        role:
+          type: string
+        active:
+          type: boolean
+
+    CpApiKeyCreate:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          nullable: true
+        role:
+          type: string
+          default: analyst
+
+    CpTelemetryEvent:
+      type: object
+      required: [tenant_id, event_type, source]
+      properties:
+        tenant_id:
+          type: string
+        user_id:
+          type: string
+          nullable: true
+        event_type:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        source:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+
+    CpIncidentIngest:
+      type: object
+      required: [tenant_id, request_id]
+      properties:
+        tenant_id:
+          type: string
+        request_id:
+          type: string
+        event_type:
+          type: string
+        decision:
+          type: string
+          nullable: true
+        reasons:
+          type: array
+          items:
+            type: string
+        findings:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true
+        evidence_snapshot:
+          type: object
+          additionalProperties: true
+          nullable: true
+        ts:
+          type: number
+          format: float
+          nullable: true
+        received_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    CpAuthzCheckResponse:
+      type: object
+      properties:
+        principal:
+          type: string
+        role:
+          type: string
+        tenant:
+          type: string
+          nullable: true
+        exp:
+          type: string
+          format: date-time
+
+    CpAuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        tenant_id:
+          type: string
+          nullable: true
+        principal:
+          type: string
+          nullable: true
+        path:
+          type: string
+        method:
+          type: string
+        status:
+          type: string
+        duration_s:
+          type: string
+        meta:
+          type: object
+          additionalProperties: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    IdentityProviderInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+
+    IdentityEnrichRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        provider:
+          type: string
+          nullable: true
+
+    IdentityUserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        job_title:
+          type: string
+          nullable: true
+        groups:
+          type: array
+          items:
+            type: string
+        roles:
+          type: array
+          items:
+            type: string
+        provider:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    IdentityTokenValidateRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+        provider:
+          type: string
+          nullable: true
+
+    IdentityTokenValidateResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        provider:
+          type: string
+          nullable: true
+        claims:
+          type: object
+          additionalProperties: true
+
+    RuntimeEvaluateRequest:
+      type: object
+      required: [content]
+      properties:
+        tenant_id:
+          type: string
+          default: default
+        content:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    RuntimeDecisionResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        decision:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+        actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        risk:
+          type: object
+          additionalProperties: true
+        evidence_snapshot:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+    DetectionFinding:
+      type: object
+      additionalProperties: true
+
+    DetectionScanRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          default: ""
+        direction:
+          type: string
+          default: request
+        content_type:
+          type: string
+          default: text/plain
+        source_url:
+          type: string
+          nullable: true
+        tenant_id:
+          type: string
+          default: default
+        local_findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectionFinding'
+
+    DetectionTextRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+
+    DetectionSimpleResponse:
+      type: object
+      properties:
+        risk_score:
+          type: number
+          format: float
+        detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectionFinding'
+
+    DetectionScanResponse:
+      type: object
+      properties:
+        action:
+          type: string
+        reason:
+          type: string
+        risk_score:
+          type: number
+          format: float
+        detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectionFinding'
+        tenant_id:
+          type: string
+        direction:
+          type: string
+
+    ComplianceFrameworkInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        version:
+          type: string
+
+    ComplianceControlInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        severity:
+          type: string
+        automated:
+          type: boolean
+
+    ComplianceAssessmentRequest:
+      type: object
+      properties:
+        framework:
+          type: string
+          nullable: true
+        evidence:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+    ComplianceEvidenceSubmission:
+      type: object
+      required: [evidence]
+      properties:
+        evidence:
+          type: object
+          additionalProperties: true
+
+    SiemIngestResponse:
+      type: object
+      properties:
+        accepted:
+          type: integer
+        event_ids:
+          type: array
+          items:
+            type: string
+
+    SiemSecurityEvent:
+      type: object
+      properties:
+        event_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        tenant_id:
+          type: string
+          default: default
+        source_service:
+          type: string
+          default: unknown
+        event_type:
+          type: string
+          default: generic
+        severity:
+          type: string
+          enum: [critical, high, medium, low, info]
+          default: info
+        title:
+          type: string
+        description:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        tags:
+          type: array
+          items:
+            type: string
+        raw:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+    SiemEventBatchRequest:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SiemSecurityEvent'
+
+    SiemOutputConfigRequest:
+      type: object
+      required: [output_type]
+      properties:
+        tenant_id:
+          type: string
+          default: default
+        output_type:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+        enabled:
+          type: boolean
+          default: true
+
+    SiemOutputConfigResponse:
+      type: object
+      properties:
+        output_id:
+          type: string
+        tenant_id:
+          type: string
+        output_type:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_test:
+          type: string
+          nullable: true
+        status:
+          type: string
+
+    SiemOutputInfo:
+      type: object
+      properties:
+        output_id:
+          type: string
+        tenant_id:
+          type: string
+        output_type:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        config_keys:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+
+    SiemOutputsListResponse:
+      type: object
+      properties:
+        outputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SiemOutputInfo'
+        available_types:
+          type: array
+          items:
+            type: string
+
+    SiemTestEventRequest:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          default: default
+        output_id:
+          type: string
+          nullable: true
+
+    SiemTestEventResponse:
+      type: object
+      properties:
+        test_event_id:
+          type: string
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    # ---- Health --------------------------------------------------------------
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, unhealthy]
+        version:
+          type: string
+          description: Service version string
+          example: 2.0.0
+        uptime_s:
+          type: integer
+          description: Seconds since service started
+        db_ok:
+          type: boolean
+          description: Database connectivity
+        redis_ok:
+          type: boolean
+          description: Redis connectivity
+        service:
+          type: string
+          description: Service name
+        timestamp:
+          type: string
+          format: date-time
+
+    ReadinessResponse:
+      type: object
+      properties:
+        ready:
+          type: boolean
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [ok, error]
+            redis:
+              type: string
+              enum: [ok, error]
+            migrations:
+              type: string
+              enum: [ok, pending, error]
+          additionalProperties:
+            type: string
+
+    # ---- Common --------------------------------------------------------------
+
+    OperationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        id:
+          type: string
+          nullable: true
+          description: Affected resource ID (when applicable)
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code
+          example: not_found
+        message:
+          type: string
+          description: Human-readable error description
+        status:
+          type: integer
+          description: HTTP status code mirrored in body
+        request_id:
+          type: string
+          description: Unique request ID for support tracing
+        timestamp:
+          type: string
+          format: date-time
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          enum: [validation_error]
+        message:
+          type: string
+        status:
+          type: integer
+          enum: [422]
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: JSON path to the invalid field
+              issue:
+                type: string
+                description: Description of the validation failure
+              value:
+                description: The invalid value that was provided

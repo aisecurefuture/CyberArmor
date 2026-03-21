@@ -1,0 +1,30 @@
+{{- $services := dict
+  "control-plane" .Values.controlPlane
+  "policy" .Values.policy
+  "detection" .Values.detection
+  "response" .Values.response
+  "identity" .Values.identity
+  "siem-connector" .Values.siemConnector
+  "compliance" .Values.compliance
+  "proxy-agent" .Values.proxyAgent
+  "dashboard" .Values.adminDashboard
+-}}
+{{- range $name, $svc := $services }}
+{{- if $svc.pdb.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cyberarmor.fullname" $ }}-{{ $name }}
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    {{- include "cyberarmor.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  minAvailable: {{ $svc.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "cyberarmor.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $name }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,103 @@
+{{- $services := dict
+  "policy" .Values.policy
+  "detection" .Values.detection
+  "response" .Values.response
+  "identity" .Values.identity
+  "siem-connector" .Values.siemConnector
+  "compliance" .Values.compliance
+  "proxy-agent" .Values.proxyAgent
+  "agent-identity" .Values.agentIdentity
+  "ai-router" .Values.aiRouter
+  "audit" .Values.audit
+-}}
+{{- range $name, $svc := $services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cyberarmor.fullname" $ }}-{{ $name }}
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    {{- include "cyberarmor.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      {{- include "cyberarmor.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $name }}
+  template:
+    metadata:
+      labels:
+        {{- include "cyberarmor.selectorLabels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $name }}
+    spec:
+      {{- with $.Values.global.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "cyberarmor.serviceAccountName" $ }}
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.global.imageRegistry }}/{{ $svc.image.repository }}:{{ $svc.image.tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ $svc.image.pullPolicy }}
+          ports:
+            - containerPort: {{ $svc.service.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "cyberarmor.fullname" $ }}-config
+            - secretRef:
+                name: {{ include "cyberarmor.fullname" $ }}-secrets
+          {{- with $svc.env }}
+          env: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.healthCheck.path }}
+              port: {{ $svc.service.port }}
+            initialDelaySeconds: {{ $svc.healthCheck.initialDelaySeconds }}
+            periodSeconds: {{ $svc.healthCheck.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.healthCheck.path }}
+              port: {{ $svc.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources: {{- toYaml $svc.resources | nindent 12 }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/component: {{ $name }}
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cyberarmor.fullname" $ }}-{{ $name }}
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    {{- include "cyberarmor.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  type: {{ $svc.service.type }}
+  ports:
+    - port: {{ $svc.service.port }}
+      targetPort: {{ $svc.service.port }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "cyberarmor.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+{{- end }}

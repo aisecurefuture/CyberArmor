@@ -1,0 +1,49 @@
+{
+  "name": "@cyberarmor/sdk",
+  "version": "1.0.0",
+  "description": "CyberArmor AI Identity Control Plane SDK — The Identity Layer for AI Agents",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./providers/openai": "./dist/cjs/providers/openai.js",
+    "./providers/anthropic": "./dist/cjs/providers/anthropic.js",
+    "./providers/google": "./dist/cjs/providers/google.js",
+    "./providers/amazon": "./dist/cjs/providers/amazon.js",
+    "./providers/microsoft": "./dist/cjs/providers/microsoft.js",
+    "./providers/xai": "./dist/cjs/providers/xai.js",
+    "./providers/meta": "./dist/cjs/providers/meta.js",
+    "./providers/perplexity": "./dist/cjs/providers/perplexity.js",
+    "./frameworks/langchain": "./dist/cjs/frameworks/langchain.js",
+    "./frameworks/vercelAI": "./dist/cjs/frameworks/vercelAI.js",
+    "./frameworks/llamaindex": "./dist/cjs/frameworks/llamaindex.js",
+    "./middleware/express": "./dist/cjs/middleware/express.js",
+    "./middleware/nextjs": "./dist/cjs/middleware/nextjs.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "openai": ">=4.0.0",
+    "@anthropic-ai/sdk": ">=0.20.0",
+    "@langchain/core": ">=0.3.0",
+    "ai": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "openai": {"optional": true},
+    "@anthropic-ai/sdk": {"optional": true},
+    "@langchain/core": {"optional": true},
+    "ai": {"optional": true}
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0"
+  }
+}

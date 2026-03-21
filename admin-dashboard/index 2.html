@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIShields Protect — Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="color-scheme" content="dark light" />
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    /* Transitions */
+    .nav-item { transition: all 0.15s ease; }
+    .view-card { transition: all 0.2s ease; }
+    .view-card:hover { border-color: #475569; }
+    /* Condition builder */
+    .condition-group { border-left: 3px solid #6366f1; padding-left: 12px; margin-left: 8px; }
+    .condition-group.or-group { border-left-color: #f59e0b; }
+    /* Toast */
+    .toast { animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity:0; } to { transform: translateX(0); opacity:1; } }
+    @keyframes fadeOut { from { opacity:1; } to { opacity:0; } }
+    /* Spinner */
+    .spinner { border: 2px solid #334155; border-top: 2px solid #818cf8; border-radius: 50%; width: 16px; height: 16px; animation: spin 0.6s linear infinite; display: inline-block; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    /* Pulse dot */
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <div class="min-h-screen flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-72 border-r border-slate-800 bg-slate-950/80 backdrop-blur flex flex-col hidden md:flex">
+      <div class="p-4">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-sm">AS</div>
+          <div>
+            <div class="font-semibold leading-tight">AIShields Protect</div>
+            <div class="text-xs text-slate-400">Enterprise Security Console</div>
+          </div>
+        </div>
+        <nav class="space-y-0.5" id="nav"></nav>
+      </div>
+
+      <!-- Connection panel -->
+      <div class="mt-auto p-4">
+        <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="flex items-center justify-between">
+            <div class="text-sm font-semibold">Services</div>
+            <button id="openSettings" class="text-xs text-slate-300 hover:text-white underline">Settings</button>
+          </div>
+          <div class="mt-2 text-xs text-slate-400 space-y-1" id="serviceStatus"></div>
+          <div class="mt-3 flex gap-2">
+            <button id="pingAll" class="flex-1 text-xs py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Ping All</button>
+          </div>
+          <div class="mt-2 text-xs" id="healthStatus"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mobile sidebar toggle -->
+    <button id="mobileMenuBtn" class="md:hidden fixed top-4 left-4 z-30 w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+
+    <!-- Main -->
+    <main class="flex-1 min-w-0">
+      <header class="sticky top-0 z-10 bg-slate-950/80 backdrop-blur border-b border-slate-800">
+        <div class="px-4 md:px-8 py-4 flex items-center justify-between">
+          <div>
+            <h1 id="pageTitle" class="text-lg md:text-xl font-semibold">Dashboard</h1>
+            <p id="pageSubtitle" class="text-xs md:text-sm text-slate-400">Security posture overview</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="hidden md:block text-xs text-slate-400">Tenant</div>
+            <input id="tenantScope" class="w-36 md:w-48 text-sm px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600" placeholder="tenant_id" />
+            <button id="applyScope" class="text-sm px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Apply</button>
+          </div>
+        </div>
+      </header>
+      <div class="px-4 md:px-8 py-6" id="app"></div>
+    </main>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toasts" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Settings modal -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-40">
+    <div class="w-full max-w-3xl rounded-2xl bg-slate-950 border border-slate-800 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between sticky top-0 bg-slate-950 z-10">
+        <div>
+          <div class="font-semibold">Settings</div>
+          <div class="text-xs text-slate-400">Service URLs and API keys (stored in localStorage)</div>
+        </div>
+        <button id="closeSettings" class="text-slate-300 hover:text-white text-lg">✕</button>
+      </div>
+      <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4" id="settingsFields"></div>
+      <div class="p-5 border-t border-slate-800 flex items-center justify-end gap-2 sticky bottom-0 bg-slate-950">
+        <button id="resetSettings" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Reset Defaults</button>
+        <button id="saveSettings" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm modal -->
+  <div id="confirmModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
+    <div class="w-full max-w-md rounded-2xl bg-slate-950 border border-slate-800 shadow-xl">
+      <div class="p-5">
+        <div class="font-semibold mb-2" id="confirmTitle">Confirm</div>
+        <div class="text-sm text-slate-300" id="confirmMessage"></div>
+      </div>
+      <div class="p-5 border-t border-slate-800 flex justify-end gap-2">
+        <button id="confirmCancel" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Cancel</button>
+        <button id="confirmOk" class="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

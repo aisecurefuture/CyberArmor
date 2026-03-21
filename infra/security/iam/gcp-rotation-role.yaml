@@ -1,0 +1,8 @@
+title: CyberArmorRotationOperator
+description: Least-privilege role for CyberArmor Secret Manager rotations
+stage: GA
+includedPermissions:
+  - secretmanager.secrets.get
+  - secretmanager.versions.add
+  - secretmanager.versions.enable
+  - secretmanager.versions.get

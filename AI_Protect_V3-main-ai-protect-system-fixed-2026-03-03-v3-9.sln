@@ -8,11 +8,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "extensions", "extensions", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{71B77391-219F-6E34-4F18-EA5613B577E2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIShieldsRasp", "rasp\dotnet\AIShieldsRasp.csproj", "{3A662091-4835-240C-62E6-152C2648222C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CyberArmorRasp", "rasp\dotnet\CyberArmorRasp.csproj", "{3A662091-4835-240C-62E6-152C2648222C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "visual-studio", "visual-studio", "{C31EE97F-8CBC-1D1D-CB83-058F4DD5CF8A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIShieldsExtension", "extensions\visual-studio\AIShieldsExtension.csproj", "{4E9DE9E5-F42F-8F46-C92C-2418F43C5805}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CyberArmorExtension", "extensions\visual-studio\CyberArmorExtension.csproj", "{4E9DE9E5-F42F-8F46-C92C-2418F43C5805}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
